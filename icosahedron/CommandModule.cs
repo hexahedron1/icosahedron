@@ -104,6 +104,11 @@ internal class CommandModule : InteractionModuleBase {
     public async Task DeУтпдшырify(IMessage msg) {
         await RespondAsync(msg.CleanContent.DeУтпдшырify());
     }
+
+    [MessageCommand("утпдшырify")]
+    public async Task Утпдшырify(IMessage msg) {
+        await RespondAsync(msg.CleanContent.Утпдшырify());
+    }
     
     [SlashCommand("markov-yourself", "generate a message based on yours (not ai slop)")]
     public async Task MarkovYourself() {
