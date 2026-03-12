@@ -271,6 +271,13 @@ internal static partial class Data {
             _ => "иди нахуй"
         };
     }
+
+    public static void DownloadImage(string url) {
+        if (!Directory.Exists("/tmp/icosahedron")) Directory.CreateDirectory("/tmp/icosahedron");
+                            
+        ShutTheFuckUpAboutThisBeingDeprecated.DownloadFile(url,
+            $"/tmp/icosahedron/image");
+    }
     public static bool IsMentioned(this IMessage msg, IGuildUser user) {
         return msg.MentionedEveryone || msg.MentionedUserIds.Contains(user.Id) || (from x in user.RoleIds where msg.MentionedRoleIds.Contains(x) select x).Any();
     }
