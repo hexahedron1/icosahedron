@@ -265,10 +265,7 @@ namespace Icosahedron {
                             await msg.Reply("∞x∞ (∞² total)");
                         } else {
                             await Log("MessageReceived", "Downloading image");
-                            if (!Directory.Exists("/tmp/icosahedron")) Directory.CreateDirectory("/tmp/icosahedron");
-                            
-                            ShutTheFuckUpAboutThisBeingDeprecated.DownloadFile(attack.Url,
-                                $"/tmp/icosahedron/image");
+                            DownloadImage(attack.Url);
                             using Image img = await Image.LoadAsync("/tmp/icosahedron/image");
                             if (img.Frames.Count == 1) await msg.Reply($"{img.Width}x{img.Height} ({img.Width * img.Height} total)");
                             else await msg.Reply($"{img.Width}x{img.Height} ({img.Width * img.Height * img.Frames.Count} total over {img.Frames.Count} frames)");
