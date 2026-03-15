@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -60,6 +61,52 @@ internal static partial class Data {
         "image/webp",
         "image/svg+xml"
     ];
+
+    public static void MakePageEmbed<T>(string title, string id, IEnumerable<T> list, Func<T, string> nameGetter, int page,
+        out Embed embed,
+        out MessageComponent components) {
+        var enumerable = list as T[] ?? list.ToArray();
+        switch (page) {
+            case int.MinValue:
+                MakePageEmbed(title, id, enumerable, nameGetter, 0, out embed, out components);
+                return;
+            case int.MaxValue:
+                MakePageEmbed(title, id, enumerable, nameGetter, (int)Math.Ceiling(enumerable.Length / 10.0) - 1, out embed, out components);
+                return;
+        }
+
+        EmbedBuilder embedBuilder = new() {
+            Color = EmbedColor,
+            Title = title,
+            Footer = new EmbedFooterBuilder {
+                Text = $"Page {page + 1}/{Math.Ceiling(enumerable.Length / 10.0)}"
+            }
+        };
+        
+        for (int i = 0; i < 10; i++) {
+            int idx = i + page * 10;
+            if (idx >= enumerable.Length) break;
+            embedBuilder.Description += $"**{idx + 1}**. {nameGetter(enumerable[idx])}\n";
+        }
+        embed = embedBuilder.Build();
+        components = new ComponentBuilder {
+            ActionRows = [
+                new() {
+                    Components = [
+                        new ButtonBuilder("<<", $"{id}-{int.MinValue}", ButtonStyle.Secondary, null, null, page == 0),
+                        new ButtonBuilder("<", $"{id}-{page-1}", ButtonStyle.Primary, null, null, page == 0),
+                        new ButtonBuilder(">", $"{id}-{page+1}", ButtonStyle.Primary, null, null, page == (int)Math.Ceiling(enumerable.Length / 10.0) - 1),
+                        new ButtonBuilder(">>", $"{id}-{int.MaxValue}", ButtonStyle.Secondary, null, null, page == (int)Math.Ceiling(enumerable.Length / 10.0) - 1),
+                    ]
+                }
+            ]
+        }.Build();
+    }
+
+    public static void MakePageEmbed(string title, string id, IEnumerable<string> list, int page, out Embed embed,
+        out MessageComponent component) {
+        MakePageEmbed(title, id, list, x => x, page, out embed, out component);
+    }
 
     public static WebClient ShutTheFuckUpAboutThisBeingDeprecated = new WebClient();
     public static Embed ErrorEmbed(this Exception e) {

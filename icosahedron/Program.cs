@@ -37,6 +37,7 @@ namespace Icosahedron {
             client.MessageCommandExecuted += SlashCommandExecuted;
             client.SelectMenuExecuted += Client_SelectMenuExecuted;
             client.MessageReceived += MessageReceived;
+            client.ButtonExecuted += SlashCommandExecuted;
             interactionService.Log += Log;
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
@@ -466,59 +467,76 @@ namespace Icosahedron {
         }
 
         private async Task<Task> SlashCommandExecuted(SocketInteraction cmd) {
-            await interactionService.ExecuteCommandAsync(new InteractionContext(client, cmd, cmd.Channel), null);
+            try {
+#if DEBUG
+                if (cmd is IComponentInteraction ci) {
+                    await Log("Component interaction", ci.Data.CustomId);
+                } else if (cmd is ISlashCommandInteraction sc) {
+                    await Log("Interaction", sc.Data.Name);
+                }
+#endif
+                await interactionService.ExecuteCommandAsync(new InteractionContext(client, cmd, cmd.Channel), null);
+            } catch (Exception e) {
+                if (cmd.HasResponded) await cmd.FollowupAsync(embed: e.ErrorEmbed());
+                else await cmd.RespondAsync(embed: e.ErrorEmbed());
+            }
+
             return Task.CompletedTask;
         }
 
         private bool asleep;
 
         private async Task<Task> Ready() {
-            LoadConfig(out _);
-            await interactionService.RegisterCommandsGloballyAsync();
-            StartTime = DateTime.Now;
-            await client.SetCustomStatusAsync("Rise and shine, Mr. Freeman");
-            budilnik.AutoReset = true;
-            budilnik.Interval =
+            try {
+                LoadConfig(out _);
+                await interactionService.RegisterCommandsGloballyAsync();
+                StartTime = DateTime.Now;
+                await client.SetCustomStatusAsync("Rise and shine, Mr. Freeman");
+                budilnik.AutoReset = true;
+                budilnik.Interval =
 #if DEBUG
-                20000
+                    20000
 #else
                 60000
 #endif
-                ;
-            budilnik.Elapsed += async (_, _) => {
-                bool unstash = Rand.Next(2) == 0;
-                if (Rand.Next(2) == 0) {
-                    asleep = !asleep;
-                    await client.SetStatusAsync(asleep ? UserStatus.AFK : UserStatus.Online);
-                    if (!asleep) unstash = true;
-                    else {
-                        await Log("Status", "Asleep");
-                        await client.SetCustomStatusAsync("");
+                    ;
+                budilnik.Elapsed += async (_, _) => {
+                    bool unstash = Rand.Next(2) == 0;
+                    if (Rand.Next(2) == 0) {
+                        asleep = !asleep;
+                        await client.SetStatusAsync(asleep ? UserStatus.AFK : UserStatus.Online);
+                        if (!asleep) unstash = true;
+                        else {
+                            await Log("Status", "Asleep");
+                            await client.SetCustomStatusAsync("");
+                        }
                     }
-                }
 
-                if (!asleep && Rand.Next(2) == 0) {
-                    var (type, text) = stati.Random();
-                    if (type == ActivityType.CustomStatus) await client.SetCustomStatusAsync(text);
-                    else await client.SetGameAsync(text, type: type);
-                    await ((IMessageChannel)await client.GetChannelAsync(
+                    if (!asleep && Rand.Next(2) == 0) {
+                        var (type, text) = stati.Random();
+                        if (type == ActivityType.CustomStatus) await client.SetCustomStatusAsync(text);
+                        else await client.SetGameAsync(text, type: type);
+                        await ((IMessageChannel)await client.GetChannelAsync(
 #if DEBUG
-                        1203012662523469824
+                            1203012662523469824
 #else
                         1272557307212857426
 #endif
-                    )).SendMessageAsync(text);
-                    await Log("Status", type.ToString().PadRight(24) + text);
-                }
+                        )).SendMessageAsync(text);
+                        await Log("Status", type.ToString().PadRight(24) + text);
+                    }
 
-                if (unstash && whopinged.Count > 0) {
-                    ISocketMessageChannel ch = whopinged.Dequeue();
-                    await ch.SendMessageAsync("who pinged");
-                    await Log("Ping", "Unsatshed ping");
-                }
-            };
-            budilnik.Start();
-            Console.WriteLine(budilnik.Enabled);
+                    if (unstash && whopinged.Count > 0) {
+                        ISocketMessageChannel ch = whopinged.Dequeue();
+                        await ch.SendMessageAsync("who pinged");
+                        await Log("Ping", "Unsatshed ping");
+                    }
+                };
+                budilnik.Start();
+                Console.WriteLine(budilnik.Enabled);
+            } catch (Exception e) {
+                await client.GetUser(SupremeLeader).SendMessageAsync(embed: e.ErrorEmbed());
+            }
             return Task.CompletedTask;
         }
 
