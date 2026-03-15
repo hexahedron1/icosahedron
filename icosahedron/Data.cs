@@ -62,6 +62,8 @@ internal static partial class Data {
         "image/svg+xml"
     ];
 
+    public static (ulong, ulong)? ServerScopeState = null;
+
     public static void MakePageEmbed<T>(string title, string id, IEnumerable<T> list, Func<T, string> nameGetter, int page,
         out Embed embed,
         out MessageComponent components) {

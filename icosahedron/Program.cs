@@ -38,6 +38,7 @@ namespace Icosahedron {
             client.SelectMenuExecuted += Client_SelectMenuExecuted;
             client.MessageReceived += MessageReceived;
             client.ButtonExecuted += SlashCommandExecuted;
+            client.AutocompleteExecuted += SlashCommandExecuted;
             interactionService.Log += Log;
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();

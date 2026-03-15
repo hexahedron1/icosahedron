@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Newtonsoft.Json;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -5,6 +6,7 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors.Dithering;
 using Image = SixLabors.ImageSharp.Image;
 using System.IO.Ports;
+using System.Runtime.Serialization.Json;
 
 namespace Icosahedron;
 
@@ -50,7 +52,8 @@ internal class CommandModule : InteractionModuleBase {
 
     [SlashCommand("generatorismyname", "get a generator is my name 😁🦂😁🦂 image")]
     public async Task GeneratorIsMyName(
-        [MinValue(0), Summary("index", "the index of the image, starts at 0")] int? index = null) {
+        [MinValue(0), Summary("index", "the index of the image, starts at 0")]
+        int? index = null) {
         int lim = Directory.GetFiles($"{datadir}/generatorismyname").Length - 1;
         index ??= new Random().Next(lim + 1);
         if (index > lim) {
@@ -227,6 +230,60 @@ internal class CommandModule : InteractionModuleBase {
     [Group("serverscope",
         "I SWEAR THIS IS NOT SPY TECH also owner only")]
     internal class ServerScopeGroupModule : InteractionModuleBase {
+        public static async Task ServerAutocomplete(IInteractionContext Context) {
+            if (Context.User.Id != SupremeLeader) {
+                await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync([]);
+                return;
+            }
+
+            var userInput = (Context.Interaction as SocketAutocompleteInteraction)!.Data.Current.Value.ToString();
+            var results = client.Guilds.Select(guild => new AutocompleteResult(guild.Name, guild.Id.ToString()))
+                .Where(x => string.IsNullOrWhiteSpace(userInput) ||
+                            x.Name.Contains(userInput, StringComparison.InvariantCultureIgnoreCase))
+                .ToList();
+            await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync(results.Take(25));
+        }
+
+        public static async Task UserAutocomplete(IInteractionContext Context) {
+            if (Context.User.Id != SupremeLeader) {
+                await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync([]);
+                return;
+            }
+
+            var userInput = (Context.Interaction as SocketAutocompleteInteraction)!.Data.Current.Value.ToString();
+            List<AutocompleteResult> results = [];
+            foreach (var guild in client.Guilds) {
+                if (results.Count > 25) break;
+                results.AddRange(from x in await guild.GetUsersAsync().FlattenAsync()
+                    where string.IsNullOrWhiteSpace(userInput) ||
+                          x.Username.Contains(userInput, StringComparison.InvariantCultureIgnoreCase)
+                    where !results.Contains(new AutocompleteResult(x.Username, x.Id.ToString()))
+                    select new AutocompleteResult(x.Username, x.Id.ToString()));
+            }
+
+            await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync(results.Take(25));
+        }
+
+        public static async Task ChannelAutocomplete(IInteractionContext Context) {
+            if (Context.User.Id != SupremeLeader) {
+                await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync([]);
+                return;
+            }
+
+            var userInput = (Context.Interaction as SocketAutocompleteInteraction)!.Data.Current.Value.ToString();
+            List<AutocompleteResult> results = [];
+            foreach (var guild in client.Guilds) {
+                if (results.Count > 25) break;
+                results.AddRange(from x in guild.TextChannels
+                    where string.IsNullOrWhiteSpace(userInput) ||
+                          x.Name.Contains(userInput, StringComparison.InvariantCultureIgnoreCase)
+                    select new AutocompleteResult($"{guild.Name} - {x.Name}", x.Id.ToString())
+                );
+            }
+
+            await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync(results.Take(25));
+        }
+
         [Group("server", "subcommands for servers")]
         internal class ServerSubCommandModule : InteractionModuleBase {
             [SlashCommand("list", "lists all server the bot is in")]
@@ -235,6 +292,7 @@ internal class CommandModule : InteractionModuleBase {
                     await RespondAsync(IdiNahui(100));
                     return;
                 }
+
                 try {
                     await DeferAsync();
                     MakePageEmbed("Available servers", "serverscope-server-list",
@@ -253,6 +311,7 @@ internal class CommandModule : InteractionModuleBase {
                     await RespondAsync(IdiNahui(100));
                     return;
                 }
+
                 try {
                     await DeferAsync();
                     MakePageEmbed("Available servers", "serverscope-server-list",
@@ -266,6 +325,226 @@ internal class CommandModule : InteractionModuleBase {
                 catch (Exception e) {
                     await ShowError(Context.Interaction, e);
                 }
+            }
+
+            [AutocompleteCommand("server", "info")]
+            public async Task InfoAutocomplete() => await ServerAutocomplete(Context);
+
+            [SlashCommand("info", "fetch server info")]
+            public async Task Info([Summary("server"), Autocomplete] string serverId) {
+                try {
+                    if (Context.User.Id != SupremeLeader) {
+                        await RespondAsync(IdiNahui(100));
+                        return;
+                    }
+
+                    await DeferAsync();
+                    ulong id = ulong.Parse(serverId);
+                    var guild = client.GetGuild(id);
+                    EmbedBuilder embed = new EmbedBuilder {
+                        Author = new EmbedAuthorBuilder {
+                            Name = guild.Owner.Username,
+                            IconUrl = guild.Owner.GetAvatarUrl()
+                        },
+                        Title = guild.Name,
+                        Description = guild.Description,
+                        Timestamp = guild.CreatedAt,
+                        ThumbnailUrl = guild.IconUrl,
+                        Color = EmbedColor,
+                        Fields = [
+                            new() {
+                                IsInline = true,
+                                Name = "Members",
+                                Value = $"{guild.MemberCount}"
+                            },
+                            new() {
+                                IsInline = true,
+                                Name = "Verification level",
+                                Value = $"{guild.VerificationLevel}"
+                            },
+                            new() {
+                                IsInline = true,
+                                Name = "Boost level",
+                                Value = $"{(int)guild.PremiumTier}"
+                            }
+                        ],
+                        Footer = new EmbedFooterBuilder {
+                            Text = serverId
+                        }
+                    };
+                    await FollowupAsync(embed: embed.Build());
+                }
+                catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+        }
+
+        [Group("channel", "subcommands for channels")]
+        internal class ChannelSubCommandModule : InteractionModuleBase {
+            [AutocompleteCommand("server", "list")]
+            public async Task ListAutocomplete() => await ServerAutocomplete(Context);
+
+            [SlashCommand("list", "lists all channels the bot is in")]
+            public async Task List([Summary("server"), Autocomplete] string serverId) {
+                if (Context.User.Id != SupremeLeader) {
+                    await RespondAsync(IdiNahui(100));
+                    return;
+                }
+
+                try {
+                    await DeferAsync();
+                    var guild = ((DiscordSocketClient)Context.Client).GetGuild(ulong.Parse(serverId));
+                    MakePageEmbed($"{guild.Name} servers", $"serverscope-channel-list-{serverId}",
+                        guild.Channels.Where(x => x is IMessageChannel),
+                        x => x.Name, 0, out var embed, out var components);
+                    await FollowupAsync(embed: embed, components: components);
+                }
+                catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+
+            [ComponentInteraction("serverscope-channel-list-*-*", true)]
+            public async Task ListButton(string serverId, int id) {
+                if (Context.User.Id != SupremeLeader) {
+                    await RespondAsync(IdiNahui(100));
+                    return;
+                }
+
+                try {
+                    await DeferAsync();
+                    var guild = ((DiscordSocketClient)Context.Client).GetGuild(ulong.Parse(serverId));
+                    MakePageEmbed($"{guild.Name} servers", $"serverscope-channel-list-{serverId}",
+                        guild.Channels.Where(x => x is IMessageChannel),
+                        x => x.Name, id, out var embed, out var components);
+                    await ModifyOriginalResponseAsync(x => {
+                        x.Embed = embed;
+                        x.Components = components;
+                    });
+                }
+                catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+
+            [AutocompleteCommand("channel", "info")]
+            public async Task InfoAutocomplete() => await ChannelAutocomplete(Context);
+
+            [SlashCommand("info", "fetch channel info")]
+            public async Task Info([Summary("channel"), Autocomplete] string channelId) {
+                try {
+                    if (Context.User.Id != SupremeLeader) {
+                        await RespondAsync(IdiNahui(100));
+                        return;
+                    }
+
+                    await DeferAsync();
+                    if (await client.GetChannelAsync(ulong.Parse(channelId)) is not ITextChannel channel) {
+                        throw new Exception("Invald channel type");
+                    }
+
+                    EmbedBuilder embed = new EmbedBuilder {
+                        Title = channel.Name,
+                        Description = channel.Topic,
+                        Color = EmbedColor,
+                        Author = new() {
+                            Name = $"{(await channel.GetCategoryAsync()).Name}"
+                        },
+                        Fields = [
+                            new() {
+                                IsInline = true,
+                                Name = "Slowmode",
+                                Value = $"{(channel.SlowModeInterval == 0 ? "None" : channel.SlowModeInterval)}"
+                            },
+                            new() {
+                                IsInline = true,
+                                Name = "Is NSFW?",
+                                Value = $"{channel.IsNsfw}"
+                            }
+                        ],
+                        Footer = new() {
+                            Text = channelId
+                        },
+                        Timestamp = channel.CreatedAt,
+                    };
+                    
+                    await FollowupAsync(embed: embed.Build(), components: new ComponentBuilder {
+                        ActionRows = [
+                            new() {
+                                Components = [
+                                    new ButtonBuilder("Invite", $"create-invite-{channelId}", ButtonStyle.Secondary)
+                                ]
+                            }
+                        ]
+                    }.Build());
+                } catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+
+            [ComponentInteraction("create-invite-*", true)]
+            public async Task CreateInvite(ulong channel) {
+                try {
+                    if (Context.User.Id != SupremeLeader) {
+                        await RespondAsync(IdiNahui(100));
+                        return;
+                    }
+                    if (await client.GetChannelAsync(channel) is not ITextChannel ch) {
+                        throw new Exception("Invald channel type");
+                    }
+
+                    var invite = await ch.CreateInviteAsync();
+                    await RespondAsync(invite.Url, ephemeral: true);
+                } catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+        }
+            
+        [AutocompleteCommand("user", "userinfo")]
+        public async Task UserInfoAutocomplete() => await UserAutocomplete(Context);
+
+        [SlashCommand("userinfo", "fetch user info")]
+        public async Task UserInfo([Summary("user"), Autocomplete] string userId) {
+            try {
+
+                if (Context.User.Id != SupremeLeader) {
+                    await RespondAsync(IdiNahui(100));
+                    return;
+                }
+
+                await DeferAsync();
+                ulong id = ulong.Parse(userId);
+                var user = await client.GetUserAsync(id);
+                EmbedBuilder embed = new EmbedBuilder {
+                    Title = user.Username,
+                    ThumbnailUrl = user.GetAvatarUrl(),
+                    Color = EmbedColor,
+                    Fields = [
+                        new() {
+                            Name = "Status",
+                            Value = $"{user.Status}"
+                        },
+                    ],
+                    Timestamp = user.CreatedAt
+                };
+                if (user.IsWebhook)
+                    embed.Footer = new EmbedFooterBuilder {
+                        Text = $"Webhook | {userId}"
+                    };
+                else if (user.IsBot)
+                    embed.Footer = new EmbedFooterBuilder {
+                        Text = $"Bot | {userId}"
+                    };
+                else 
+                    embed.Footer = new EmbedFooterBuilder {
+                        Text = userId
+                    };
+                await FollowupAsync(embed: embed.Build());
+            }
+            catch (Exception e) {
+                await ShowError(Context.Interaction, e);
             }
         }
     }
