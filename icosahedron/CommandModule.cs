@@ -257,7 +257,7 @@ internal class CommandModule : InteractionModuleBase {
                 results.AddRange(from x in await guild.GetUsersAsync().FlattenAsync()
                     where string.IsNullOrWhiteSpace(userInput) ||
                           x.Username.Contains(userInput, StringComparison.InvariantCultureIgnoreCase)
-                    where !results.Contains(new AutocompleteResult(x.Username, x.Id.ToString()))
+                    where results.FirstOrDefault(y => (string)y.Value == x.Id.ToString()) == null
                     select new AutocompleteResult(x.Username, x.Id.ToString()));
             }
 
@@ -521,6 +521,7 @@ internal class CommandModule : InteractionModuleBase {
                     Title = user.Username,
                     ThumbnailUrl = user.GetAvatarUrl(),
                     Color = EmbedColor,
+                    Description = $"<@{userId}>",
                     Fields = [
                         new() {
                             Name = "Status",
@@ -546,6 +547,18 @@ internal class CommandModule : InteractionModuleBase {
             catch (Exception e) {
                 await ShowError(Context.Interaction, e);
             }
+        }
+
+        [SlashCommand("status", "shows serverscope status")]
+        public async Task Status() {
+            
+            if (Context.User.Id != SupremeLeader) {
+                await RespondAsync(IdiNahui(100));
+                return;
+            }
+
+            if (ServerScopeState == null) await RespondAsync("serverscope is offline");
+            else await RespondAsync($"<#{ServerScopeState.Value.Item1}> <-> <#{ServerScopeState.Value.Item2}>");
         }
     }
 }
