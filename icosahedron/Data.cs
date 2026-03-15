@@ -64,24 +64,28 @@ internal static partial class Data {
     public static WebClient ShutTheFuckUpAboutThisBeingDeprecated = new WebClient();
     public static Embed ErrorEmbed(this Exception e) {
         try {
-            EmbedBuilder embed = new EmbedBuilder {
-                Title = e.GetType().Name,
-                Description = e.Message,
+            EmbedBuilder embed = new() {
                 Color = 0xAF2D2A,
                 Footer = new EmbedFooterBuilder {
                     Text = ErrorMsgs.Random()
                 }
             };
-            if (e.StackTrace != null) {
-                embed.Fields.Add(new() {
-                    IsInline = true,
-                    Name = "Stack trace",
-                    Value = e.StackTrace.Length <= EmbedFieldBuilder.MaxFieldValueLength
-                        ? $"```\n{e.StackTrace}\n```"
-                        : "Too long to show here"
-                });
+            if (e is NotImplementedException) {
+                embed.Title = "Not implemented";
+                embed.Description = "This feature has not been fully implemented yet";
+                if (!string.IsNullOrEmpty(e.Message)) {
+                    embed.AddField("Developer message", e.Message);
+                }
+            } else {
+                embed.Title = e.GetType().Name;
+                embed.Description = e.Message;
             }
-
+            if (e.StackTrace != null) {
+                embed.AddField("Stack trace", e.StackTrace.Length <= EmbedFieldBuilder.MaxFieldValueLength
+                    ? $"```\n{e.StackTrace}\n```"
+                    : "Too long to show here"
+                );
+            }
             return embed.Build();
         }
         catch (Exception ee) {
