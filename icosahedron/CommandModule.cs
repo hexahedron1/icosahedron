@@ -231,6 +231,10 @@ internal class CommandModule : InteractionModuleBase {
         internal class ServerSubCommandModule : InteractionModuleBase {
             [SlashCommand("list", "lists all server the bot is in")]
             public async Task List() {
+                if (Context.User.Id != SupremeLeader) {
+                    await RespondAsync(IdiNahui(100));
+                    return;
+                }
                 try {
                     await DeferAsync();
                     MakePageEmbed("Available servers", "serverscope-server-list",
@@ -245,6 +249,10 @@ internal class CommandModule : InteractionModuleBase {
 
             [ComponentInteraction("serverscope-server-list-*", true)]
             public async Task ListButton(int id) {
+                if (Context.User.Id != SupremeLeader) {
+                    await RespondAsync(IdiNahui(100));
+                    return;
+                }
                 try {
                     await DeferAsync();
                     MakePageEmbed("Available servers", "serverscope-server-list",
