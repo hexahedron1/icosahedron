@@ -497,7 +497,7 @@ namespace Icosahedron {
 #if DEBUG
                     20000
 #else
-                60000
+                    60000
 #endif
                     ;
                 budilnik.Elapsed += async (_, _) => {
@@ -520,7 +520,7 @@ namespace Icosahedron {
 #if DEBUG
                             1203012662523469824
 #else
-                        1272557307212857426
+                            1272557307212857426
 #endif
                         )).SendMessageAsync(text);
                         await Log("Status", type.ToString().PadRight(24) + text);
