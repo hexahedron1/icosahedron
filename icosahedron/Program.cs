@@ -47,30 +47,30 @@ namespace Icosahedron {
 
         private async Task<Task> MessageReceived(SocketMessage msg) {
             if (msg.Author.Id == client.CurrentUser.Id) return Task.CompletedTask;
-            if (ServerScopeState.HasValue && !msg.Author.IsWebhook) {
-                if (msg.Channel.Id == ServerScopeState.Value.Item1) {
-                    await CopyMessage(msg, (IMessageChannel)await client.GetChannelAsync(ServerScopeState.Value.Item2));
-                } else if (msg.Channel.Id == ServerScopeState.Value.Item2) {
-                    await CopyMessage(msg, ServerScopeState.Value.Item3);
-                }
-            }
-            GeneratorIsMyName(msg);
-            string msgContent = msg.Content;
-            string msgCleanContent = msg.CleanContent;
-            bool? isУтпдшыр = false;
-            if (IllegalRussian.Count(msg.Content.ToLower()) >= 2) {
-                await Log("MessageReceived", "Suspected утпдшыр");
-                msgContent = msgContent.DeУтпдшырify();
-                msgCleanContent = msgCleanContent.DeУтпдшырify();
-                isУтпдшыр = true;
-            } 
-            if (Rand.Next(1000000) == 0) {
-                await Log("MessageReceived", "Suspected english");
-                msgContent = msgContent.Утпдшырify();
-                msgCleanContent = msgCleanContent.Утпдшырify();
-                isУтпдшыр = null;
-            }
             try {
+                if (ServerScopeState.HasValue && !msg.Author.IsWebhook) {
+                    if (msg.Channel.Id == ServerScopeState.Value.Item1) {
+                        await CopyMessage(msg, (IMessageChannel)await client.GetChannelAsync(ServerScopeState.Value.Item2));
+                    } else if (msg.Channel.Id == ServerScopeState.Value.Item2) {
+                        await CopyMessage(msg, ServerScopeState.Value.Item3);
+                    }
+                }
+                GeneratorIsMyName(msg);
+                string msgContent = msg.Content;
+                string msgCleanContent = msg.CleanContent;
+                bool? isУтпдшыр = false;
+                if (IllegalRussian.Count(msg.Content.ToLower()) >= 2) {
+                    await Log("MessageReceived", "Suspected утпдшыр");
+                    msgContent = msgContent.DeУтпдшырify();
+                    msgCleanContent = msgCleanContent.DeУтпдшырify();
+                    isУтпдшыр = true;
+                } 
+                if (Rand.Next(1000000) == 0) {
+                    await Log("MessageReceived", "Suspected english");
+                    msgContent = msgContent.Утпдшырify();
+                    msgCleanContent = msgCleanContent.Утпдшырify();
+                    isУтпдшыр = null;
+                }
                 if (msgContent.StartsWith(prefix)) {
                     string command = msgContent[prefix.Length..].Trim();
                     string[] args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);

@@ -528,7 +528,7 @@ internal class CommandModule : InteractionModuleBase {
             [AutocompleteCommand("channel", "connect")]
             public async Task ConnectAutocomplete() => await ChannelAutocomplete(Context);
             [SlashCommand("connect", "starts a serverscope session")]
-            public async Task Connect([Summary("channel"), Autocomplete] string channelId, [Summary("preload", "how many messages to load on start"), MinValue(0), MaxValue(25)]int preload = 0) {
+            public async Task Connect([Summary("channel"), Autocomplete] string channelId, [Summary("preload", "how many messages to load on start"), MinValue(0), MaxValue(25)]int preload = 5) {
                 try {
                     if (Context.User.Id != SupremeLeader) {
                         await RespondAsync(IdiNahui(100));
