@@ -7,6 +7,7 @@ using SixLabors.ImageSharp.Processing.Processors.Dithering;
 using Image = SixLabors.ImageSharp.Image;
 using System.IO.Ports;
 using System.Runtime.Serialization.Json;
+using Discord.Webhook;
 
 namespace Icosahedron;
 
@@ -32,13 +33,37 @@ internal class CommandModule : InteractionModuleBase {
 
     public static async Task ShowError(IDiscordInteraction interaction, Exception e) {
         try {
-            if (interaction.HasResponded) await interaction.FollowupAsync(embed: e.ErrorEmbed());
-            else await interaction.RespondAsync(embed: e.ErrorEmbed());
+            MessageComponent? comp = null;
+            if (e.StackTrace is not null && e.StackTrace.Length > EmbedFieldBuilder.MaxFieldValueLength) {
+                if (!Directory.Exists(Path.Join(datadir, "errorlogs")))
+                    Directory.CreateDirectory(Path.Join(datadir, "errorlogs"));
+                DateTime now = DateTime.Now;
+                await File.WriteAllTextAsync(Path.Join(datadir, "errorlogs", $"log_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}.txt"), e.StackTrace);
+                comp = new ComponentBuilder() {
+                    ActionRows = [
+                        new() {
+                            Components = [
+                                new ButtonBuilder("Send full stack trace", $"show-stack_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}", ButtonStyle.Secondary)
+                            ]
+                        }
+                    ]
+                }.Build();
+            }
+            if (interaction.HasResponded) await interaction.FollowupAsync(embed: e.ErrorEmbed(), components: comp);
+            else await interaction.RespondAsync(embed: e.ErrorEmbed(), components: comp);
         }
         catch (Discord.Net.HttpException) {
             await (await client.GetChannelAsync(interaction.ChannelId!.Value) as IMessageChannel)!.SendMessageAsync(
                 embed: e.ErrorEmbed());
         }
+    }
+    [ComponentInteraction("show-stack_*")]
+    public async Task SendStackTrace(string id) {
+        string path = Path.Join(datadir, "errorlogs", $"log_{id}.txt");
+        if (File.Exists(path)) {
+            await RespondWithFileAsync(path, ephemeral: true);
+        }
+        else await RespondAsync($"log {id} not found");
     }
 
     [SlashCommand("ping", "latency hopefully")]
@@ -499,6 +524,47 @@ internal class CommandModule : InteractionModuleBase {
                 } catch (Exception e) {
                     await ShowError(Context.Interaction, e);
                 }
+            }
+            [AutocompleteCommand("channel", "connect")]
+            public async Task ConnectAutocomplete() => await ChannelAutocomplete(Context);
+            [SlashCommand("connect", "starts a serverscope session")]
+            public async Task Connect([Summary("channel"), Autocomplete] string channelId, [Summary("preload", "how many messages to load on start"), MinValue(0), MaxValue(25)]int preload = 0) {
+                try {
+                    if (Context.User.Id != SupremeLeader) {
+                        await RespondAsync(IdiNahui(100));
+                        return;
+                    }
+                    if (ServerScopeState is not null) {
+                        await RespondAsync("the serverscope is already running");
+                        return;
+                    }
+                    await DeferAsync();
+                    if (await client.GetChannelAsync(ulong.Parse(channelId)) is not ITextChannel target || Context.Channel is not ITextChannel source) {
+                        throw new Exception("Invald channel type");
+                    }
+
+                    var hooks = await source.GetWebhooksAsync();
+                    if (hooks.FirstOrDefault(x => x.Creator.Id == client.CurrentUser.Id) is not { } srcHook) {
+                        srcHook = await source.CreateWebhookAsync("spy sat");
+                    }
+
+                    DiscordWebhookClient hookClient = new(srcHook);
+                    ServerScopeState = (source.Id, target.Id, hookClient);
+                    await FollowupAsync($"connected to <#{channelId}>");
+                    var msgs = (await target.GetMessagesAsync(preload).FlattenAsync()).Reverse().ToArray();
+                    foreach (var msg in msgs) {
+                        if (msg is null) continue;
+                        await CopyMessage(msg, hookClient);
+                    }
+                } catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+
+            [SlashCommand("disconnect", "stops the running session")]
+            public async Task Disconnect() {
+                ServerScopeState = null;
+                await RespondAsync("disconnected");
             }
         }
             

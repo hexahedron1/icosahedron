@@ -1,6 +1,9 @@
 using System.ComponentModel;
+using System.Net.Http.Json;
 using System.Runtime.InteropServices.JavaScript;
+using System.Text;
 using System.Text.RegularExpressions;
+using Discord.Webhook;
 using Newtonsoft.Json;
 
 namespace Icosahedron;
@@ -62,8 +65,7 @@ internal static partial class Data {
         "image/svg+xml"
     ];
 
-    public static (ulong, ulong)? ServerScopeState = null;
-
+    
     public static void MakePageEmbed<T>(string title, string id, IEnumerable<T> list, Func<T, string> nameGetter, int page,
         out Embed embed,
         out MessageComponent components) {
@@ -104,7 +106,56 @@ internal static partial class Data {
             ]
         }.Build();
     }
+    // source, target, target webhook
+    public static (ulong, ulong, DiscordWebhookClient)? ServerScopeState = null;
 
+    public static HttpClient HttpClient = new();
+    // source, target
+    private static Dictionary<ulong, ulong> MessageCache = new();
+    public static async Task CopyMessage(IMessage message, DiscordWebhookClient webhook) {
+        if (string.IsNullOrEmpty(message.Content) && message.Embeds.Count == 0 && message.Attachments.Count == 0) return;
+        ulong newmsg;
+        string content = message.Reference is not null && message.Reference.MessageId.IsSpecified ?
+            $"-# - **{(await message.Channel.GetMessageAsync(message.Reference.MessageId.Value)).Author.Username}**: {(await message.Channel.GetMessageAsync(message.Reference.MessageId.Value)).CleanContent.Ellipsis(50)}\n{message.Content}".Ellipsis(2000)
+            : message.Content;
+        if (message.Attachments.Count == 0) {
+            newmsg = await webhook.SendMessageAsync(content, false, from x in message.Embeds select (Embed)x,
+                message.Author.Username, message.Author.GetAvatarUrl());
+        }
+        else {
+            List<IMessageComponentBuilder> comps = [];
+            if (message.CleanContent.Length > 0) comps.Add(new TextDisplayBuilder(content));
+            var sanitized = (from x in message.Attachments
+                where x.ContentType.Split('/')[0] is "image" or "video"
+                select new MediaGalleryItemProperties(new UnfurledMediaItemProperties(x.Url))).ToArray();
+            if (sanitized.Length > 0) comps.Add(new MediaGalleryBuilder(sanitized));
+            if (comps.Count == 0) return;
+            ComponentBuilderV2 builder = new(comps);
+            newmsg = await webhook.SendMessageAsync(components: builder.Build(), username: message.Author.Username, avatarUrl: message.Author.GetAvatarUrl());
+        }
+        MessageCache.Add(newmsg, message.Id);
+    }
+    public static async Task CopyMessage(IMessage message, IMessageChannel channel) {
+        if (string.IsNullOrEmpty(message.Content) && message.Embeds.Count == 0 && message.Attachments.Count == 0) return;
+        MessageReference? refer = message.Reference is not null && message.Reference.MessageId.IsSpecified ? 
+            MessageCache.TryGetValue(message.Reference.MessageId.Value, out var id) ? new MessageReference(id, channel.Id) : null
+            : null;
+        if (message.Attachments.Count == 0) {
+            await channel.SendMessageAsync(message.Content, false, embeds: (from x in message.Embeds select (Embed)x).ToArray(), messageReference: refer);
+        }
+        else {
+            List<IMessageComponentBuilder> comps = [];
+            if (message.CleanContent.Length > 0) comps.Add(new TextDisplayBuilder(message.CleanContent));
+            var sanitized = (from x in message.Attachments
+                where x.ContentType.Split('/')[0] is "image" or "video"
+                select new MediaGalleryItemProperties(new UnfurledMediaItemProperties(x.Url))).ToArray();
+            if (sanitized.Length > 0) comps.Add(new MediaGalleryBuilder(sanitized));
+            if (comps.Count == 0) return;
+            ComponentBuilderV2 builder = new(comps);
+            await channel.SendMessageAsync(components: builder.Build(), messageReference: refer);
+        }
+    }
+    
     public static void MakePageEmbed(string title, string id, IEnumerable<string> list, int page, out Embed embed,
         out MessageComponent component) {
         MakePageEmbed(title, id, list, x => x, page, out embed, out component);
@@ -132,7 +183,7 @@ internal static partial class Data {
             if (e.StackTrace != null) {
                 embed.AddField("Stack trace", e.StackTrace.Length <= EmbedFieldBuilder.MaxFieldValueLength
                     ? $"```\n{e.StackTrace}\n```"
-                    : "Too long to show here"
+                    : "Too long to show immediately"
                 );
             }
             return embed.Build();
@@ -150,7 +201,7 @@ internal static partial class Data {
                     Name = "Stack trace",
                     Value = ee.StackTrace.Length <= EmbedFieldBuilder.MaxFieldValueLength
                         ? $"```\n{ee.StackTrace}\n```"
-                        : "Too long to show here"
+                        : "Too long to show immediately"
                 });
             }
 
@@ -333,6 +384,11 @@ internal static partial class Data {
     }
     public static bool IsMentioned(this IMessage msg, IGuildUser user) {
         return msg.MentionedEveryone || msg.MentionedUserIds.Contains(user.Id) || (from x in user.RoleIds where msg.MentionedRoleIds.Contains(x) select x).Any();
+    }
+
+    public static string Ellipsis(this string str, int maxLength) {
+        if (maxLength <= 3) throw new ArgumentException("Maximum length must be equal to or bigger than 4", nameof(maxLength));
+        return str.Length <= maxLength ? str : str[..(maxLength-3)]+"..."; 
     }
 
     [GeneratedRegex("[a-z][абвгдеёжзийклмнопрстуфхцчшщъыьэюя]|[абвгдеёжзийклмнопрстуфхцчшщъыьэюя][a-z]|(\\n|^| )(ь|ъ|ы)[абвгдеёжзийклмнопрстуфхцчшщъыьэюя]|ёё|ёщ|ыё|ёу|йэ|гъ|кщ|щф|щз|эщ|щк|гщ|щп|щт|щш|щг|щм|фщ|щл|щд|дщ|ьэ|чц|вй|ёц|ёэ|ёа|йа|шя|шы|ёе|йё|гю|хя|йы|ця|гь|сй|хю|хё|ёи|ёо|яё|ёя|ёь|ёэ|ъж|эё|ъд|цё|уь|щч|чй|шй|шз|ыф|жщ|жш|жц|ыъ|ыэ|ыю|ыь|жй|ыы|жъ|жы|ъш|пй|ъщ|зщ|ъч|ъц|ъу|ъф|ъх|ъъ|ъы|ыо|жя|зй|ъь|ъэ|ыа|нй|еь|цй|ьй|ьл|ьр|пъ|еы|еъ|ьа|шъ|ёы|ёъ|ът|щс|оь|къ|оы|щх|щщ|щъ|щц|кй|оъ|цщ|лъ|мй|шщ|ць|цъ|щй|йь|ъг|иъ|ъб|ъв|ъи|ъй|ъп|ър|ъс|ъо|ън|ък|ъл|ъм|иы|иь|йу|щэ|йы|йъ|щы|щю|щя|ъа|мъ|йй|йж|ьу|гй|эъ|уъ|аь|чъ|хй|тй|чщ|ръ|юъ|фъ|уы|аъ|юь|аы|юы|эь|эы|бй|яь|ьы|ьь|ьъ|яъ|яы|хщ|дй|фй")]

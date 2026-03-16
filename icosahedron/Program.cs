@@ -3,16 +3,14 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SixLabors.ImageSharp;
 using Image = SixLabors.ImageSharp.Image;
-
+// добро пожаловать на сервер безумные арбузы
 namespace Icosahedron {
     internal class Program {
-        // this will be filled on startup
         string token = "";
         InteractionService interactionService;
 
         static Task Main(string[] args) => new Program().MainAsync();
 
-        // bot setup is done here
         public System.Timers.Timer budilnik = new();
 
         async Task MainAsync() {
@@ -25,7 +23,6 @@ namespace Icosahedron {
 #endif
             )).Trim();
             client = new DiscordSocketClient(new DiscordSocketConfig() {
-                // make sure privileged intents are allowed
                 GatewayIntents = GatewayIntents.All,
                 UseInteractionSnowflakeDate = false
             });
@@ -50,6 +47,13 @@ namespace Icosahedron {
 
         private async Task<Task> MessageReceived(SocketMessage msg) {
             if (msg.Author.Id == client.CurrentUser.Id) return Task.CompletedTask;
+            if (ServerScopeState.HasValue && !msg.Author.IsWebhook) {
+                if (msg.Channel.Id == ServerScopeState.Value.Item1) {
+                    await CopyMessage(msg, (IMessageChannel)await client.GetChannelAsync(ServerScopeState.Value.Item2));
+                } else if (msg.Channel.Id == ServerScopeState.Value.Item2) {
+                    await CopyMessage(msg, ServerScopeState.Value.Item3);
+                }
+            }
             GeneratorIsMyName(msg);
             string msgContent = msg.Content;
             string msgCleanContent = msg.CleanContent;
