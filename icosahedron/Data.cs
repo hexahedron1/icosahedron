@@ -55,6 +55,18 @@ internal static partial class Data {
         return Rand.Next(chanceOfSilly) == 0 ? CompletelyRandomResponses.Random() : list.Random();
     }
 
+    public static byte[] bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+    public static float Cram(float x, float num, int type = 0) => (float)(type switch {
+        -1 => Math.Floor(x*num)/num,
+        1 => Math.Ceiling(x*num)/num,
+        _ => Math.Round(x*num)/num
+    });
+    
+
+    public static float Dither(float v, float b, float t, float m) => (v - b) / (t - b) >= m ? t : b;
+    
+
     public static readonly string[] ImageTypes = [
         "image/bmp",
         "image/png",

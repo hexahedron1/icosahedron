@@ -6,6 +6,7 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors.Dithering;
 using Image = SixLabors.ImageSharp.Image;
 using System.IO.Ports;
+using System.Numerics;
 using System.Runtime.Serialization.Json;
 using Discord.Webhook;
 
@@ -179,6 +180,43 @@ internal class CommandModule : InteractionModuleBase {
             $"waiting for Discord.Net to add message search day {Math.Ceiling((DateTime.Now - WaitingForSearchSince).TotalDays)}");
     }
 
+    [MessageCommand("crush")]
+    public async Task Crush(IMessage msg) {
+        try {
+            if (msg.Attachments.Count == 0) {
+                await RespondAsync("where image");
+                return;
+            }
+
+            IAttachment? attack = msg.Attachments.FirstOrDefault(attahh => ImageTypes.Contains(attahh.ContentType));
+
+            if (attack == null) {
+                await RespondAsync("where image");
+                return;
+            }
+
+            await DeferAsync();
+            DownloadImage(attack.Url);
+            Image<Rgb24> img = Image.Load<Rgb24>("/tmp/icosahedron/image");
+            for (int x = 0; x < img.Width; x++) {
+                for (int y = 0; y < img.Height; y++) {
+                    var pix = img[x, y].ToScaledVector4();
+                    Vector4 bot = new(Cram(pix.X, 4, -1), Cram(pix.Y, 4, -1), Cram(pix.Z, 4, -1), 1f);
+                    Vector4 top = new(Cram(pix.X, 4, 1), Cram(pix.Y, 4, 1), Cram(pix.Z, 4, 1), 1f);
+                    float map = bayer[x % 4 + y % 4 * 4]/16f;
+                    var outCol = new Rgb24();
+                    outCol.FromScaledVector4(new(Dither(pix.X, bot.X, top.X, map), Dither(pix.Y, bot.Y, top.Y, map),
+                        Dither(pix.Z, bot.Z, top.Z, map), 1f));
+                    img[x, y] = outCol;
+                }
+            }
+            await img.SaveAsPngAsync("/tmp/icosahedron/crushed.png");
+            await FollowupWithFileAsync("/tmp/icosahedron/crushed.png");
+        } catch (Exception e) {
+            await ShowError(Context.Interaction, e);
+        }
+    }
+
     [Group("arduino", "commands for cube's arduino")]
     internal class ArduinoGroupModule : InteractionModuleBase {
         [SlashCommand("show-image", "show an image on an OLED screen")]
@@ -252,8 +290,7 @@ internal class CommandModule : InteractionModuleBase {
         }
     }
 
-    [Group("serverscope",
-        "I SWEAR THIS IS NOT SPY TECH also owner only")]
+    [Group("serverscope", "I SWEAR THIS IS NOT SPY TECH also owner only")]
     internal class ServerScopeGroupModule : InteractionModuleBase {
         public static async Task ServerAutocomplete(IInteractionContext Context) {
             if (Context.User.Id != SupremeLeader) {
