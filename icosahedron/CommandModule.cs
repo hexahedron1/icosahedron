@@ -197,16 +197,16 @@ internal class CommandModule : InteractionModuleBase {
 
             await DeferAsync();
             DownloadImage(attack.Url);
-            Image<Rgb24> img = Image.Load<Rgb24>("/tmp/icosahedron/image");
+            var img = Image.Load<Rgba32>("/tmp/icosahedron/image");
             for (int x = 0; x < img.Width; x++) {
                 for (int y = 0; y < img.Height; y++) {
                     var pix = img[x, y].ToScaledVector4();
-                    Vector4 bot = new(Cram(pix.X, 4, -1), Cram(pix.Y, 4, -1), Cram(pix.Z, 4, -1), 1f);
-                    Vector4 top = new(Cram(pix.X, 4, 1), Cram(pix.Y, 4, 1), Cram(pix.Z, 4, 1), 1f);
+                    Vector4 bot = new(Cram(pix.X, 4, -1), Cram(pix.Y, 4, -1), Cram(pix.Z, 4, -1), Cram(pix.W, 4, -1));
+                    Vector4 top = new(Cram(pix.X, 4, 1), Cram(pix.Y, 4, 1), Cram(pix.Z, 4, 1), Cram(pix.W, 4, 1));
                     float map = bayer[x % 4 + y % 4 * 4]/16f;
-                    var outCol = new Rgb24();
+                    var outCol = new Rgba32();
                     outCol.FromScaledVector4(new(Dither(pix.X, bot.X, top.X, map), Dither(pix.Y, bot.Y, top.Y, map),
-                        Dither(pix.Z, bot.Z, top.Z, map), 1f));
+                        Dither(pix.Z, bot.Z, top.Z, map), pix.W));
                     img[x, y] = outCol;
                 }
             }
