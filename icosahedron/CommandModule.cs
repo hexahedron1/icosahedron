@@ -7,6 +7,7 @@ using SixLabors.ImageSharp.Processing.Processors.Dithering;
 using Image = SixLabors.ImageSharp.Image;
 using System.IO.Ports;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.Serialization.Json;
 using Discord.Webhook;
 
@@ -56,6 +57,51 @@ internal class CommandModule : InteractionModuleBase {
         catch (Discord.Net.HttpException) {
             await (await client.GetChannelAsync(interaction.ChannelId!.Value) as IMessageChannel)!.SendMessageAsync(
                 embed: e.ErrorEmbed());
+        }
+    }
+
+    [SlashCommand("info", "general info about the bot")]
+    public async Task Info() {
+        try {
+            var author = await client.GetUserAsync(SupremeLeader);
+            var dotnetver = Environment.Version;
+            var discordver = (Assembly.GetAssembly(typeof(DiscordSocketClient))!.GetName().Version)!;
+            EmbedBuilder embed = new EmbedBuilder {
+                Title = "Icosahedron",
+                Author = new EmbedAuthorBuilder {
+                    Name = $"by {author.Username}",
+                    IconUrl = author.GetAvatarUrl()
+                },
+                Description =
+                    "Bot with highly specific inside jokes to a random friend group that won't make sense to anyone outside\nA proper help command will be implemented later",
+                Color = EmbedColor,
+                Fields = [
+                    new EmbedFieldBuilder {
+                        IsInline = true,
+                        Name = "Software",
+                        Value =
+                            $"Written in C# (.NET {dotnetver.Major}.{dotnetver.Minor}.{dotnetver.Build}, Discord.Net {discordver.Major}.{discordver.Minor}.{discordver.Build}); running on Linux {Environment.OSVersion.Version}"
+                    },
+                    new EmbedFieldBuilder {
+                        IsInline = true,
+                        Name = "Source code",
+                        Value = "[Github](https://github.com/hexahedron1/icosahedron)"
+                    },
+                    new EmbedFieldBuilder {
+                        IsInline = true,
+                        Name = "\"Support\" server",
+                        Value = "https://discord.gg/vGyZmXGnea\nin reality you shouldn't even use this bot unless you know what you're doing"
+                    }
+                ],
+                Footer = new EmbedFooterBuilder {
+                    Text = "Online since"
+                },
+                Timestamp = StartTime
+            };
+            await RespondAsync(embed: embed.Build());
+        }
+        catch (Exception e) {
+            await ShowError(Context.Interaction, e);
         }
     }
     [ComponentInteraction("show-stack_*")]
