@@ -43,7 +43,7 @@ internal class CommandModule : InteractionModuleBase {
                     Name = "Command list",
                     Value = """
                             **pacman -Sybau [person]** - mute someone for 28 days
-                            **usermod [person] [nickname** - change someone's nickname
+                            **usermod [person] [nickname]** - change someone's nickname
                             """,
                 }
             ]
