@@ -134,7 +134,7 @@ internal class CommandModule : InteractionModuleBase {
                 Color = EmbedColor,
                 Fields = [
                     new EmbedFieldBuilder {
-                        IsInline = true,
+                        IsInline = false,
                         Name = "Software",
                         Value =
                             $"Written in C# (.NET {dotnetver.Major}.{dotnetver.Minor}.{dotnetver.Build}, Discord.Net {discordver.Major}.{discordver.Minor}.{discordver.Build}); running on Linux {Environment.OSVersion.Version}"
