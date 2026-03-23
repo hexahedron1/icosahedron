@@ -186,7 +186,8 @@ namespace Icosahedron {
                             await msg.Reply($"idk what {command[(args[0].Length + 1)..]} means");
                             return Task.CompletedTask;
                         }
-                    } else if (args[0] == "increment") {
+                    } 
+                    else if (args[0] == "increment") {
                         string filePath = Path.Join(datadir, "counters.json");
                         string cname = command[(args[0].Length + 1)..];
                         string json = await File.ReadAllTextAsync(filePath);
@@ -213,7 +214,8 @@ namespace Icosahedron {
                             return Task.CompletedTask;
                         }
                         await msg.Reply($"what is {cname}");
-                    } else if (args[0] == "decrement") {
+                    }
+                    else if (args[0] == "decrement") {
                         string filePath = Path.Join(datadir, "counters.json");
                         string cname = command[(args[0].Length + 1)..];
                         string json = await File.ReadAllTextAsync(filePath);
@@ -240,11 +242,13 @@ namespace Icosahedron {
                             return Task.CompletedTask;
                         }
                         await msg.Reply($"what is {cname}");
-                    } else if (args[0] == "throw" && args.Length > 1) {
+                    }
+                    else if (args[0] == "throw" && args.Length > 1) {
                         if (args[1] == "up") throw new Exception("up");
                         if (args[1] == "говно") await msg.Channel.SendMessageAsync($"have some fresh говно, <@{msg.Author.Id}>");
-                    } else if (args.Length > 2 && ((args[0] is "add" or "remove" or "update" && args[1] == "tag") ||
-                                                   (args[0] == "list" && args[1] == "tags")))
+                    }
+                    else if (args.Length > 2 && ((args[0] is "add" or "remove" or "update" && args[1] == "tag") ||
+                                                 (args[0] == "list" && args[1] == "tags")))
                         await msg.AddReactionAsync(Emote.Parse("<:normal:1275453792002773146>"));
                     else if (command == "is this true") await msg.Reply(IsThisTrue.RandomerRandom());
                     else if (command is "how many pixels does this image have" or "how many pixels does this have") {
@@ -355,7 +359,7 @@ namespace Icosahedron {
                     await msg.DeleteAsync();
                 else if (msgContent == "includes unimeter 😎🍘🌾") await msg.SendToNahui(10);
                 else if (msgContent == "ico!sex") await msg.Reply("https://cdn.discordapp.com/attachments/1163847466014220339/1474853802699133176/convert.gif");
-                else if (msg.Content.EndsWith("**45** kreisicoins just appeared! type 'kreisi' to take them!") &&
+                else if (msg.Content.EndsWith("kreisicoins just appeared! type 'kreisi' to take them!") &&
                          msg.Author.Id == Unimeter && Rand.Next(20) == 0) await msg.Channel.SendMessageAsync("kreisi");
                 else if (KreisicoinMessage.IsMatch(msg.Content) && msg.Author.Id == Unimeter)
                     await msg.Channel.SendMessageAsync("https://cdn.discordapp.com/attachments/1163847466014220339/1479919974868062402/convert.gif?ex=69adca61&is=69ac78e1&hm=1a37bdb8f3d4bd3dbe004d57cfbb8d7c2cc5922cf3c53a22655eb23277a41cd5&");

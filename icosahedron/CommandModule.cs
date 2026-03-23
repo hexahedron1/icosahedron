@@ -14,8 +14,65 @@ using Discord.Webhook;
 namespace Icosahedron;
 
 internal class CommandModule : InteractionModuleBase {
-    public CommandModule() {
-    }
+    public CommandModule() { }
+
+    private Dictionary<string, EmbedBuilder> helpEmbeds = new() {
+        { "Message commands", new EmbedBuilder {
+            Title = "Message commands",
+            Description = "these commands are triggered by messages instead of bot interactions. The prefix is **hey icosahedron**",
+            Color = EmbedColor,
+            Fields = [
+                new EmbedFieldBuilder {
+                    Name = "Command list",
+                    Value = """
+                            **list counters** - list all counters the bot knows
+                            **increment [counter]** - increments a counter
+                            **decrement [counter]** - decrements a counter
+                            **is this true** (must reply to something) - essentially 8 ball
+                            **how many pixels does this have** (also must reply to something) - tells you how many pixels an image has
+                            """,
+                }
+            ]
+        } },
+        { "Sudo", new EmbedBuilder {
+            Title = "Sudo",
+            Description = "these commands are similar to message commands, but have a different prefix mimicing a unix shell, only work in servers and are trusted-person only. See </semiconductors:1471952442680934466> for more info",
+            Color = EmbedColor,
+            Fields = [
+                new EmbedFieldBuilder {
+                    Name = "Command list",
+                    Value = """
+                            **pacman -Sybau [person]** - mute someone for 28 days
+                            **usermod [person] [nickname** - change someone's nickname
+                            """,
+                }
+            ]
+        } },
+        { "Утпдшыр", new EmbedBuilder {
+            Title = "Утпдшыр",
+            Description = "This bot can translate between утпдшыр (english with a russian keyboard layout) and english. If it detect a message to be утпдшыр, it will automatically translate it, although this does not occur always. You can always manually translate it with the relevant message command",
+            Color = EmbedColor
+        } },
+        { "Semiconductors", new EmbedBuilder {
+            Title = "Semiconductors",
+            Description = "The trusted list in this bot is called semiconductors. These people have access to `sudo` commands as well as other things",
+            Color = EmbedColor,
+            Fields = [
+                new EmbedFieldBuilder {
+                    Name = "Why?",
+                    Value = "Science isn't about why, it's about why not! Why is so much of our science dangerous? Why not marry safe science if you love it so much! In fact, why not invent a special safety door that won't hit you on the butt on the way out, because you are fired!"
+                }
+            ]
+        } },
+        { "Serverscope", new EmbedBuilder {
+            Title = "Serverscope",
+            Description = "Owner-only tool for checking where this bot is added to\nIf you saw the bot talk on its own, this was probably used to do that",
+            Color = EmbedColor,
+            Footer = new EmbedFooterBuilder {
+                Text = "I SWEAR THIS ISN'T SPY TECH"
+            }
+        } }
+    };
 
     public InteractionService Service { get; set; }
 
@@ -23,7 +80,7 @@ internal class CommandModule : InteractionModuleBase {
     // {1} = 1000/ms
     // {2} = ms/1000
     // {3} = 50/ms
-    private string[] pingMessages = [
+    private readonly string[] pingMessages = [
         "{0} ms",
         "I'm {0} km away from you",
         "{0} years",
@@ -65,15 +122,15 @@ internal class CommandModule : InteractionModuleBase {
         try {
             var author = await client.GetUserAsync(SupremeLeader);
             var dotnetver = Environment.Version;
-            var discordver = (Assembly.GetAssembly(typeof(DiscordSocketClient))!.GetName().Version)!;
-            EmbedBuilder embed = new EmbedBuilder {
+            var discordver = Assembly.GetAssembly(typeof(DiscordSocketClient))!.GetName().Version!;
+            var embed = new EmbedBuilder {
                 Title = "Icosahedron",
                 Author = new EmbedAuthorBuilder {
                     Name = $"by {author.Username}",
                     IconUrl = author.GetAvatarUrl()
                 },
                 Description =
-                    "Bot with highly specific inside jokes to a random friend group that won't make sense to anyone outside\nA proper help command will be implemented later",
+                    "Bot with highly specific inside jokes to a random friend group that won't make sense to anyone outside\nMore in-depth help can be accessed in the menu below",
                 Color = EmbedColor,
                 Fields = [
                     new EmbedFieldBuilder {
@@ -98,12 +155,21 @@ internal class CommandModule : InteractionModuleBase {
                 },
                 Timestamp = StartTime
             };
-            await RespondAsync(embed: embed.Build());
+            var menu = new SelectMenuBuilder {
+                Options = (from x in helpEmbeds select new SelectMenuOptionBuilder(x.Key, x.Key)).ToList(),
+                CustomId = "help-embed-select",
+                Placeholder = "Select a help topic"
+            };
+            await RespondAsync(embed: embed.Build(), components: new ComponentBuilder { ActionRows = [ new ActionRowBuilder { Components = [ menu ] } ] }.Build());
         }
         catch (Exception e) {
             await ShowError(Context.Interaction, e);
         }
     }
+
+    [ComponentInteraction("help-embed-select")]
+    public async Task HelpEmbedSelect(string[] selections) => await RespondAsync(ephemeral: true, embeds: (from x in selections select helpEmbeds[x].Build()).ToArray());
+    
     [ComponentInteraction("show-stack_*")]
     public async Task SendStackTrace(string id) {
         string path = Path.Join(datadir, "errorlogs", $"log_{id}.txt");
