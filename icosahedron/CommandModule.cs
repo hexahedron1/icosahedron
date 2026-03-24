@@ -16,7 +16,7 @@ namespace Icosahedron;
 internal class CommandModule : InteractionModuleBase {
     public CommandModule() { }
 
-    private Dictionary<string, EmbedBuilder> helpEmbeds = new() {
+    public static Dictionary<string, EmbedBuilder> helpEmbeds = new() {
         { "Message commands", new EmbedBuilder {
             Title = "Message commands",
             Description = "these commands are triggered by messages instead of bot interactions. The prefix is **hey icosahedron**",
@@ -132,6 +132,7 @@ internal class CommandModule : InteractionModuleBase {
                 Description =
                     "Bot with highly specific inside jokes to a random friend group that won't make sense to anyone outside\nMore in-depth help can be accessed in the menu below",
                 Color = EmbedColor,
+                ThumbnailUrl = Memes.Random(),
                 Fields = [
                     new EmbedFieldBuilder {
                         IsInline = false,
@@ -151,7 +152,8 @@ internal class CommandModule : InteractionModuleBase {
                     }
                 ],
                 Footer = new EmbedFooterBuilder {
-                    Text = "Online since"
+                    Text = "Online since",
+                    IconUrl = "https://cdn.discordapp.com/attachments/1176906188613488692/1486085830161465506/etopizdec.gif"
                 },
                 Timestamp = StartTime
             };

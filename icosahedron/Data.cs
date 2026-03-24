@@ -42,6 +42,7 @@ internal static partial class Data {
     public static string[] IsThisTrue = [];
 
     public static string[] CompletelyRandomResponses = [];
+    public static string[] Memes = [];
 
     public static string[] PTSD = [
         "g bad",
@@ -240,7 +241,8 @@ internal static partial class Data {
             errormsgs = Array.Empty<string>(),
             pingmsgs = Array.Empty<string>(),
             isthistrue = Array.Empty<string>(),
-            completelyrandomresponses = Array.Empty<string>()
+            completelyrandomresponses = Array.Empty<string>(),
+            memes = Array.Empty<string>()
         };
         var jaysonToo = JsonConvert.DeserializeAnonymousType(DJson, templateToo);
         if (jaysonToo is null) {
@@ -251,6 +253,7 @@ internal static partial class Data {
         PingMsgs = jaysonToo.pingmsgs;
         IsThisTrue = jaysonToo.isthistrue;
         CompletelyRandomResponses = jaysonToo.completelyrandomresponses;
+        Memes = jaysonToo.memes;
         e = null;
         return bytes;
     }

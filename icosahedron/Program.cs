@@ -542,9 +542,33 @@ namespace Icosahedron {
                     }
                 };
                 budilnik.Start();
-                Console.WriteLine(budilnik.Enabled);
+                CommandModule.helpEmbeds.Add("Why is this a thing", new EmbedBuilder {
+                    Title = "Why is this a thing",
+                    Author = new EmbedAuthorBuilder {
+                        IconUrl = client.GetUserAsync(SupremeLeader)
+                            .Result.GetAvatarUrl(),
+                        Name = $"Small ramble from {client.GetUserAsync(SupremeLeader).Result.Username}, the author"
+                    },
+                    Description = """
+                                  The primary reason for this bot to exist is i'm just bored a lot of the time and code random things into it
+                                  It doesn't have a set purpose, doesn't have intended use cases, it just exists as salvation from my eternal boredom
+                                  Infact, the bot that's currently running is the 5th or 6th rewrite of it! I did this so many times primarily because the codebase became unmaintainable since i'm very good at writing readable code /s
+                                  If you're wondering, no AI code was used in (i think) any of these iterations and it's 100% human-made shitcode
+                                  I really advise you to not add this bot to random places that have never heard of it. It contains a LOT of references to niche inside jokes inside my friend group that will require lots of explaining to understand so it's better to not do it to avoid unnecessary confusion
+                                  Actually i lied a bit when i said it has no purpose. I *do* have a bit of vision of implementing complex behavior that would mimic a human user without any use of machine learning, just pure algorithms. This includes random status changes that affect the behavior, remembering things that happened, potentially interpreting user's messages to determine their meaning.
+                                  The only example of this right now is how the bot periodically jumps between idle and online, and while idle it does not respond to mentions and only acknowledges them when switching to online
+
+                                  I hope this clears out some confusion about the bot's existence and hope you have a great day!
+                                  """,
+                    Color = EmbedColor,
+                    Footer = new EmbedFooterBuilder {
+                        Text = "This was written in the middle of the night"
+                    }
+                });
             } catch (Exception e) {
                 await client.GetUser(SupremeLeader).SendMessageAsync(embed: e.ErrorEmbed());
+                await client.LogoutAsync();
+                Environment.Exit(1);
             }
             return Task.CompletedTask;
         }
