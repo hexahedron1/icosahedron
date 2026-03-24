@@ -71,8 +71,8 @@ namespace Icosahedron {
                     msgCleanContent = msgCleanContent.Утпдшырify();
                     isУтпдшыр = null;
                 }
-                if (msgContent.StartsWith(prefix)) {
-                    string command = msgContent[prefix.Length..].Trim();
+                if (msgContent.ToLower().StartsWith(prefix)) {
+                    string command = msgContent[prefix.Length..].ToLower().Trim();
                     string[] args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     await Log("Command", $"From {msg.Author.Username}: {command} ({args.Length} args)");
                     if (args.Length == 0) {
@@ -289,13 +289,13 @@ namespace Icosahedron {
                                       """;
                     }
                 }
-                else if (msgContent.StartsWith("sudo ")) {
+                else if (msgContent.ToLower().StartsWith("sudo ")) {
                     if (!Semiconductors.Contains(msg.Author.Id)) {
                         await msg.SendToNahui();
                         return Task.CompletedTask;
                     }
 
-                    string command = msgContent[5..];
+                    string command = msgContent[5..].ToLower();
                     string[] args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     if (msg.Channel is IGuildChannel guildChannel) {
                         if (command.StartsWith("pacman -Sybau ")) {
