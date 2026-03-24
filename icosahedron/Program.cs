@@ -72,7 +72,7 @@ namespace Icosahedron {
                     isУтпдшыр = null;
                 }
                 if (msgContent.ToLower().StartsWith(prefix)) {
-                    string command = msgContent[prefix.Length..].ToLower().Trim();
+                    string command = msgContent[prefix.Length..].Trim();
                     string[] args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     await Log("Command", $"From {msg.Author.Username}: {command} ({args.Length} args)");
                     if (args.Length == 0) {
@@ -295,7 +295,7 @@ namespace Icosahedron {
                         return Task.CompletedTask;
                     }
 
-                    string command = msgContent[5..].ToLower();
+                    string command = msgContent[5..];
                     string[] args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     if (msg.Channel is IGuildChannel guildChannel) {
                         if (command.StartsWith("pacman -Sybau ")) {
