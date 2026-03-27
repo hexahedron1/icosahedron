@@ -174,8 +174,8 @@ internal static partial class Data {
         MakePageEmbed(title, id, list, x => x, page, out embed, out component);
     }
 
-    public static WebClient ShutTheFuckUpAboutThisBeingDeprecated = new WebClient();
-    public static Embed ErrorEmbed(this Exception e) {
+    [Obsolete("i don't fucking care that it's obsolote fuck off")] public static readonly WebClient ShutTheFuckUpAboutThisBeingDeprecated = new();
+    public static Embed ErrorEmbed(this Exception e, bool dmCube = false) {
         try {
             EmbedBuilder embed = new() {
                 Color = 0xAF2D2A,
