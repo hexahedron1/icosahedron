@@ -199,6 +199,7 @@ internal static partial class Data {
                     : "Too long to show immediately"
                 );
             }
+            if (dmCube) client.GetUser(SupremeLeader).SendMessageAsync(embed: e.ErrorEmbed());
             return embed.Build();
         }
         catch (Exception ee) {
@@ -217,7 +218,7 @@ internal static partial class Data {
                         : "Too long to show immediately"
                 });
             }
-
+            if (dmCube) client.GetUser(SupremeLeader).SendMessageAsync(embed: e.ErrorEmbed());
             return embed.Build();
         }
     }

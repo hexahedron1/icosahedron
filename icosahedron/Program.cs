@@ -377,7 +377,7 @@ namespace Icosahedron {
                 await Log("MessageReceived", "Error", LogSeverity.Error, e);
                 if ((DateTime.Now - LastException.Item1).TotalSeconds > 10 || LastException.Item2 != e.GetType().Name) {
                     LastException = (DateTime.Now, e.GetType().Name);
-                    await msg.Reply(embed: e.ErrorEmbed());
+                    await msg.Reply(embed: e.ErrorEmbed(msg.Author.Id != SupremeLeader));
                 } else await msg.AddReactionAsync(Emoji.Parse("💥"));
             }
 
@@ -560,7 +560,7 @@ namespace Icosahedron {
                     }
                 });
             } catch (Exception e) {
-                await client.GetUser(SupremeLeader).SendMessageAsync(embed: e.ErrorEmbed());
+                e.ErrorEmbed(true);
                 await client.LogoutAsync();
                 Environment.Exit(1);
             }

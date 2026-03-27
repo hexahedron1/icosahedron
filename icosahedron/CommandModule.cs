@@ -108,8 +108,10 @@ internal class CommandModule : InteractionModuleBase {
                     ]
                 }.Build();
             }
-            if (interaction.HasResponded) await interaction.FollowupAsync(embed: e.ErrorEmbed(), components: comp);
-            else await interaction.RespondAsync(embed: e.ErrorEmbed(), components: comp);
+
+            bool dm = interaction.User.Id != SupremeLeader;
+            if (interaction.HasResponded) await interaction.FollowupAsync(embed: e.ErrorEmbed(dm), components: comp);
+            else await interaction.RespondAsync(embed: e.ErrorEmbed(dm), components: comp);
         }
         catch (Discord.Net.HttpException) {
             await (await client.GetChannelAsync(interaction.ChannelId!.Value) as IMessageChannel)!.SendMessageAsync(
