@@ -280,14 +280,8 @@ namespace Icosahedron {
                             if (img.Frames.Count == 1) await msg.Reply($"{img.Width}x{img.Height} ({img.Width * img.Height} total)");
                             else await msg.Reply($"{img.Width}x{img.Height} ({img.Width * img.Height * img.Frames.Count} total over {img.Frames.Count} frames)");
                         }
-                    } else if (command == "saskjlkjksljad") {
-                        using Image img = await Image.LoadAsync(Path.Join(datadir, "image.png"));
-                        string file = """
-                                      WHEATLEY IS VERY COOL AND SMART AND IS NOW IN CHARGE OF APERTURE IN {current_year}
-                                      THE IMAGE IS NINETEEN-TWENTY BY TEN-EIGHTY
-                                      THIS IMAGE IS VERY COOL
-                                      """;
-                    }
+                    } else if (command == "saskjlkjksljad") await msg.Reply(CompletelyRandomResponses.Random());
+                    
                 }
                 else if (msgContent.ToLower().StartsWith("sudo ")) {
                     if (!Semiconductors.Contains(msg.Author.Id)) {
