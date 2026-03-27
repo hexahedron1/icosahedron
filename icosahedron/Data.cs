@@ -237,6 +237,7 @@ internal static partial class Data {
         }
         Semiconductors = jayson.Semiconductors;
         DJson = File.ReadAllText(Path.Join(datadir, "random_lines.json"));
+        bytes += new FileInfo(Path.Join(datadir, "random_lines.json")).Length;
         var templateToo = new {
             errormsgs = Array.Empty<string>(),
             pingmsgs = Array.Empty<string>(),
