@@ -293,6 +293,59 @@ internal static partial class Data {
         (ActivityType.CustomStatus, "Engineering"),
         (ActivityType.Watching, "paint dry")
     ];
+    
+    public static async Task ShowError(IUserMessage msg, Exception e) {
+        try {
+            MessageComponent? comp = null;
+            if (e.StackTrace is not null && e.StackTrace.Length > EmbedFieldBuilder.MaxFieldValueLength) {
+                if (!Directory.Exists(Path.Join(datadir, "errorlogs")))
+                    Directory.CreateDirectory(Path.Join(datadir, "errorlogs"));
+                DateTime now = DateTime.Now;
+                await File.WriteAllTextAsync(Path.Join(datadir, "errorlogs", $"log_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}.txt"), e.StackTrace);
+                comp = new ComponentBuilder() {
+                    ActionRows = [
+                        new() {
+                            Components = [
+                                new ButtonBuilder("Send full stack trace", $"show-stack_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}", ButtonStyle.Secondary)
+                            ]
+                        }
+                    ]
+                }.Build();
+            }
+            await msg.ReplyAsync(embed: e.ErrorEmbed(msg.Author.Id != SupremeLeader), components: comp);
+        }
+        catch (Discord.Net.HttpException) {
+            await (await client.GetChannelAsync(msg.Channel.Id) as IMessageChannel)!.SendMessageAsync(
+                embed: e.ErrorEmbed());
+        }
+    }
+    public static async Task ShowError(IDiscordInteraction interaction, Exception e) {
+        try {
+            MessageComponent? comp = null;
+            if (e.StackTrace is not null && e.StackTrace.Length > EmbedFieldBuilder.MaxFieldValueLength) {
+                if (!Directory.Exists(Path.Join(datadir, "errorlogs")))
+                    Directory.CreateDirectory(Path.Join(datadir, "errorlogs"));
+                DateTime now = DateTime.Now;
+                await File.WriteAllTextAsync(Path.Join(datadir, "errorlogs", $"log_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}.txt"), e.StackTrace);
+                comp = new ComponentBuilder() {
+                    ActionRows = [
+                        new() {
+                            Components = [
+                                new ButtonBuilder("Send full stack trace", $"show-stack_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}", ButtonStyle.Secondary)
+                            ]
+                        }
+                    ]
+                }.Build();
+            }
+            bool dm = interaction.User.Id != SupremeLeader;
+            if (interaction.HasResponded) await interaction.FollowupAsync(embed: e.ErrorEmbed(dm), components: comp);
+            else await interaction.RespondAsync(embed: e.ErrorEmbed(dm), components: comp);
+        }
+        catch (Discord.Net.HttpException) {
+            await (await client.GetChannelAsync(interaction.ChannelId!.Value) as IMessageChannel)!.SendMessageAsync(
+                embed: e.ErrorEmbed());
+        }
+    }
 
     public static async Task<IMessage> SendToNahui(this IUserMessage message, int? chanceOfSilly = null) => await message.ReplyAsync(IdiNahui(chanceOfSilly));
 

@@ -90,34 +90,7 @@ internal class CommandModule : InteractionModuleBase {
         "Anti-fatigue ration is now {3} mg"
     ];
 
-    public static async Task ShowError(IDiscordInteraction interaction, Exception e) {
-        try {
-            MessageComponent? comp = null;
-            if (e.StackTrace is not null && e.StackTrace.Length > EmbedFieldBuilder.MaxFieldValueLength) {
-                if (!Directory.Exists(Path.Join(datadir, "errorlogs")))
-                    Directory.CreateDirectory(Path.Join(datadir, "errorlogs"));
-                DateTime now = DateTime.Now;
-                await File.WriteAllTextAsync(Path.Join(datadir, "errorlogs", $"log_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}.txt"), e.StackTrace);
-                comp = new ComponentBuilder() {
-                    ActionRows = [
-                        new() {
-                            Components = [
-                                new ButtonBuilder("Send full stack trace", $"show-stack_{now.Year}-{now.Month}-{now.Day}_{now.Hour}-{now.Minute}-{now.Second}", ButtonStyle.Secondary)
-                            ]
-                        }
-                    ]
-                }.Build();
-            }
-
-            bool dm = interaction.User.Id != SupremeLeader;
-            if (interaction.HasResponded) await interaction.FollowupAsync(embed: e.ErrorEmbed(dm), components: comp);
-            else await interaction.RespondAsync(embed: e.ErrorEmbed(dm), components: comp);
-        }
-        catch (Discord.Net.HttpException) {
-            await (await client.GetChannelAsync(interaction.ChannelId!.Value) as IMessageChannel)!.SendMessageAsync(
-                embed: e.ErrorEmbed());
-        }
-    }
+    
 
     [SlashCommand("info", "general info about the bot")]
     public async Task Info() {

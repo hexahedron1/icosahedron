@@ -381,7 +381,7 @@ namespace Icosahedron {
                 await Log("MessageReceived", "Error", LogSeverity.Error, e);
                 if ((DateTime.Now - LastException.Item1).TotalSeconds > 10 || LastException.Item2 != e.GetType().Name) {
                     LastException = (DateTime.Now, e.GetType().Name);
-                    await msg.ReplyAsync(embed: e.ErrorEmbed(msg.Author.Id != SupremeLeader));
+                    await ShowError(msg, e);
                 } else await msg.AddReactionAsync(Emoji.Parse("💥"));
             }
 
