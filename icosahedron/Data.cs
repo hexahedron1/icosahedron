@@ -30,9 +30,6 @@ internal static partial class Data {
         0x715497;
 #endif
     public static DateTime WaitingForSearchSince = new DateTime(2026, 2, 19, 18, 0, 0);
-    public static async Task<IUserMessage> Reply(this IMessage message, string text = null, bool isTTS = false, Embed embed = null, RequestOptions options = null, AllowedMentions allowedMentions = null, MessageComponent components = null, ISticker[] stickers = null, Embed[] embeds = null, MessageFlags flags = MessageFlags.None) {
-        return await message.Channel.SendMessageAsync(text, isTTS, embed, options, allowedMentions, new MessageReference(message.Id), components, stickers, embeds, flags);
-    }
 
     public static string[] ErrorMsgs = [
     ];
@@ -297,7 +294,7 @@ internal static partial class Data {
         (ActivityType.Watching, "paint dry")
     ];
 
-    public static async Task<IMessage> SendToNahui(this IMessage message, int? chanceOfSilly = null) => await message.Reply(IdiNahui(chanceOfSilly));
+    public static async Task<IMessage> SendToNahui(this IUserMessage message, int? chanceOfSilly = null) => await message.ReplyAsync(IdiNahui(chanceOfSilly));
 
     public static async Task<bool> CanMute(ulong id, IGuildChannel channel) {
         IGuildUser user = await channel.Guild.GetUserAsync(id);
