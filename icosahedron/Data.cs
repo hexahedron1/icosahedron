@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 using System.Text.RegularExpressions;
+using Discord.Net;
 using Discord.Webhook;
 using Newtonsoft.Json;
 
@@ -122,6 +123,18 @@ internal static partial class Data {
     public static HttpClient HttpClient = new();
     // source, target
     private static Dictionary<ulong, ulong> MessageCache = new();
+    public static async Task<IWebhook?> TryGetWebhook(this ITextChannel channel, string defaultName = "scug") {
+        try {
+            var hooks = await channel.GetWebhooksAsync();
+            if (hooks.FirstOrDefault(x => x.Creator.Id == client.CurrentUser.Id) is not { } hook) {
+                hook = await channel.CreateWebhookAsync(defaultName);
+            }
+            return hook;
+        }
+        catch (HttpException) {
+            return null;
+        }
+    }
     public static async Task CopyMessage(IMessage message, DiscordWebhookClient webhook) {
         if (string.IsNullOrEmpty(message.Content) && message.Embeds.Count == 0 && message.Attachments.Count == 0) return;
         ulong newmsg;

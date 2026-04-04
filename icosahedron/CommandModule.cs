@@ -668,12 +668,7 @@ internal class CommandModule : InteractionModuleBase {
                     if (await client.GetChannelAsync(ulong.Parse(channelId)) is not ITextChannel target || Context.Channel is not ITextChannel source) {
                         throw new Exception("Invald channel type");
                     }
-
-                    var hooks = await source.GetWebhooksAsync();
-                    if (hooks.FirstOrDefault(x => x.Creator.Id == client.CurrentUser.Id) is not { } srcHook) {
-                        srcHook = await source.CreateWebhookAsync("spy sat");
-                    }
-
+                    var srcHook = await source.TryGetWebhook();
                     DiscordWebhookClient hookClient = new(srcHook);
                     ServerScopeState = (source.Id, target.Id, hookClient);
                     await FollowupAsync($"connected to <#{channelId}>");

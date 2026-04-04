@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Discord.Webhook;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SixLabors.ImageSharp;
@@ -372,7 +373,14 @@ namespace Icosahedron {
                     }
                     else if (Rand.Next(10) == 0) await msg.ReplyAsync(String.Format(PingMsgs.RandomerRandom(), msg.Author.Id));
                 } else if (isУтпдшыр.HasValue && isУтпдшыр.Value) {
-                    await msg.ReplyAsync($"-# Automatic translation from утпдшыр\n{msgContent}", allowedMentions:  AllowedMentions.None);
+                    ITextChannel txtChannel = (ITextChannel)msg.Channel;
+                    var hook = await txtChannel.TryGetWebhook();
+                    if (hook is null) await msg.ReplyAsync($"-# Automatic translation from утпдшыр\n{msgContent}", allowedMentions:  AllowedMentions.None);
+                    else {
+                        DiscordWebhookClient hookClient = new(hook);
+                        await hookClient.SendMessageAsync($"{msgContent}\n-# (translated from Утпдшыр)", username: msg.Author.Username, avatarUrl: msg.Author.GetAvatarUrl());
+                        await msg.DeleteAsync();
+                    }
                 } else if (isУтпдшыр is null) {
                     await msg.ReplyAsync($"-# Automatic translation from english\n{msgContent}", allowedMentions:  AllowedMentions.None);
                 }
