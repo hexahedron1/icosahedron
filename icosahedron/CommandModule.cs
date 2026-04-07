@@ -748,4 +748,45 @@ internal class CommandModule : InteractionModuleBase {
             else await RespondAsync($"<#{ServerScopeState.Value.Item1}> <-> <#{ServerScopeState.Value.Item2}>");
         }
     }
+
+    [Group("config", "confi gurations")]
+    internal class ConfigGroupModule : InteractionModuleBase {
+        [SlashCommand("autodeутпдшырification", "toggle automatically translating to the english keyboard layout")]
+        public async Task AutoDeУтпдшырification([Summary("thing", "what to do"), Choice("toggle myself", "user"), Choice("toggle this channel", "channel"), Choice("toggle this server", "guild"), Choice("view status", "status")] string what) {
+            switch (what) {
+                case "user":
+                    if (NoAutoDeУтпдшырify.Users.Contains(Context.User.Id)) NoAutoDeУтпдшырify.Users.Remove(Context.User.Id);
+                    else NoAutoDeУтпдшырify.Users.Add(Context.User.Id);
+                    await RespondAsync(NoAutoDeУтпдшырify.Users.Contains(Context.User.Id)
+                        ? "You have opted out"
+                        : "you have opted in");
+                    break;
+                case "channel":
+                    if (NoAutoDeУтпдшырify.Channels.Contains(Context.Channel.Id)) NoAutoDeУтпдшырify.Channels.Remove(Context.Channel.Id);
+                    else NoAutoDeУтпдшырify.Channels.Add(Context.Channel.Id);
+                    await RespondAsync(NoAutoDeУтпдшырify.Channels.Contains(Context.Channel.Id)
+                        ? "disabled for this channel"
+                        : "enabled for this channel");
+                    break;
+                case "guild":
+                    if (Context.Guild is null) {
+                        await RespondAsync("this ain't a server mate");
+                        break;
+                    }
+                    if (NoAutoDeУтпдшырify.Guilds.Contains(Context.Guild.Id)) NoAutoDeУтпдшырify.Guilds.Remove(Context.Guild.Id);
+                    else NoAutoDeУтпдшырify.Guilds.Add(Context.Guild.Id);
+                    await RespondAsync(NoAutoDeУтпдшырify.Guilds.Contains(Context.Guild.Id)
+                        ? "disabled for this server"
+                        : "enabled for this server");
+                    break;
+                case "status":
+                    await RespondAsync($"{(NoAutoDeУтпдшырify.Users.Contains(Context.User.Id) ? "❌ you are opted out" : "✅ you are opted in")}\n{(NoAutoDeУтпдшырify.Channels.Contains(Context.Channel.Id) ? "❌ this channel is disabled" : "✅ this channel is enabled")}\n{(NoAutoDeУтпдшырify.Guilds.Contains(Context.Guild.Id) ? "❌ this server is disabled" : "✅ this server is enabled")}");
+                    break;
+                default: 
+                    await RespondAsync("this was not supposed to happen");
+                    break;
+            }
+            SaveConfig();
+        }
+    }
 }

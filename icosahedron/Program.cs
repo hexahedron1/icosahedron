@@ -375,7 +375,7 @@ namespace Icosahedron {
                 } else if (isУтпдшыр.HasValue && isУтпдшыр.Value) {
                     ITextChannel txtChannel = (ITextChannel)msg.Channel;
                     var hook = await txtChannel.TryGetWebhook();
-                    if (hook is null) await msg.ReplyAsync($"-# Automatic translation from утпдшыр\n{msgContent}", allowedMentions:  AllowedMentions.None);
+                    if (NoAutoDeУтпдшырify.isMatch(msg) || hook is null) await msg.ReplyAsync($"-# Automatic translation from утпдшыр\n{msgContent}", allowedMentions:  AllowedMentions.None);
                     else {
                         DiscordWebhookClient hookClient = new(hook);
                         await hookClient.SendMessageAsync($"{msgContent}\n-# (translated from Утпдшыр)", username: msg.Author.Username, avatarUrl: msg.Author.GetAvatarUrl());

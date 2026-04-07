@@ -12,12 +12,7 @@ namespace Icosahedron;
 internal static partial class Data {
     public static DiscordSocketClient client;
     public static DateTime StartTime = DateTime.MinValue;
-    public static string datadir =
-#if DEBUG
-        "/home/cube/.local/share/relaybot";
-#else
-        "/home/cube/.local/share/icosahedron";
-#endif
+    public static readonly string datadir = "/home/cube/.local/share/icosahedron";
     #region Peoples
     public const ulong SupremeLeader = 801078409076670494;
     public const ulong Unimeter = 1295364360419541125;
@@ -41,14 +36,29 @@ internal static partial class Data {
 
     public static string[] CompletelyRandomResponses = [];
     public static string[] Memes = [];
+    public static string[] ImageTypes = [];
 
     public static string[] PTSD = [
         "g bad",
         "h good"
+    public static string[] ServerscopeBlacklist = [];
+
+    public static string[] PTSD = [];
+    public static readonly string[] ExpectedFiles = [
+        "counters.json",
+        "file_types.json",
+        "random_lines.json",
+        "regex.json",
+        "things.json",
+        "config/server.json",
+        "config/channel.json",
+        "config/user.json"
     ];
+
+    public static MultimodalIdList NoAutoDeУтпдшырify = new();
     public static T Random<T>(this IEnumerable<T> list) {
         var enumerable = list as T[] ?? list.ToArray();
-        return enumerable.ElementAt(Rand.Next(enumerable.Count()));
+        return enumerable.ElementAt(Rand.Next(enumerable.Length));
     }
     public static string RandomerRandom(this IEnumerable<string> list, int chanceOfSilly = 100) {
         return Rand.Next(chanceOfSilly) == 0 ? CompletelyRandomResponses.Random() : list.Random();
@@ -64,18 +74,6 @@ internal static partial class Data {
     
 
     public static float Dither(float v, float b, float t, float m) => (v - b) / (t - b) >= m ? t : b;
-    
-
-    public static readonly string[] ImageTypes = [
-        "image/bmp",
-        "image/png",
-        "image/gif",
-        "image/jpeg",
-        "image/tiff",
-        "image/webp",
-        "image/svg+xml"
-    ];
-
     
     public static void MakePageEmbed<T>(string title, string id, IEnumerable<T> list, Func<T, string> nameGetter, int page,
         out Embed embed,
@@ -233,40 +231,93 @@ internal static partial class Data {
         }
     }
 
+    public static T ReadConfigFile<T>(string name, ref long bytes, T template) {
+        var path = Path.Join(datadir, $"{name}.json");
+        bytes += new FileInfo(path).Length;
+        var json = File.ReadAllText(path);
+        var obj = JsonConvert.DeserializeAnonymousType(json, template);
+        return obj ?? throw new Exception($"Couldn't deserialize {name}.json");
+    }
+
     public static (DateTime, string?) LastException = (new DateTime(2000, 1, 1), null);
+
+    public static void SaveConfig() {
+        var userConfig = new {
+            no_auto_deутпдшырify = NoAutoDeУтпдшырify.Users
+        };
+        File.WriteAllText(Path.Join(datadir, "config/user.json"), JsonConvert.SerializeObject(userConfig, Formatting.Indented));
+        var channelConfig = new {
+            no_auto_deутпдшырify = NoAutoDeУтпдшырify.Channels
+        };
+        File.WriteAllText(Path.Join(datadir, "config/channel.json"), JsonConvert.SerializeObject(channelConfig, Formatting.Indented));
+        var guildConfig = new {
+            no_auto_deутпдшырify = NoAutoDeУтпдшырify.Guilds
+        };
+        File.WriteAllText(Path.Join(datadir, "config/server.json"), JsonConvert.SerializeObject(guildConfig, Formatting.Indented));
+    }
     public static long LoadConfig(out Exception? e) {
-        string DJson = File.ReadAllText(Path.Join(datadir, "things.json"));
-        long bytes = new FileInfo(Path.Join(datadir, "things.json")).Length;
-        
-        var template = new {
-            Semiconductors = Array.Empty<ulong>()
-        };
-        var jayson = JsonConvert.DeserializeAnonymousType(DJson, template);
-        if (jayson is null) {
-            e = new Exception("Couldn't deserialize things.json");
+        long bytes = 0;
+        try {
+            e = null;
+            List<string> missing = [];
+            foreach (var file in ExpectedFiles) {
+                if (!File.Exists(Path.Join(datadir, file))) missing.Add(file);
+            }
+
+            if (missing.Count > 0) {
+                e = new Exception("Some config files are missing: " + string.Join(", ", missing));
+                return 0;
+            }
+
+            {
+                var template = new {
+                    semiconductors = Array.Empty<ulong>(),
+                    ptsd = Array.Empty<string>()
+                };
+                var jayson = ReadConfigFile("things", ref bytes, template);
+                Semiconductors = jayson.semiconductors;
+                PTSD = jayson.ptsd;
+            }
+            {
+                var template = new {
+                    errormsgs = Array.Empty<string>(),
+                    pingmsgs = Array.Empty<string>(),
+                    isthistrue = Array.Empty<string>(),
+                    completelyrandomresponses = Array.Empty<string>(),
+                    memes = Array.Empty<string>()
+                };
+                var jayson = ReadConfigFile("random_lines", ref bytes, template);
+                ErrorMsgs = jayson.errormsgs;
+                PingMsgs = jayson.pingmsgs;
+                IsThisTrue = jayson.isthistrue;
+                CompletelyRandomResponses = jayson.completelyrandomresponses;
+                Memes = jayson.memes;
+            }
+            {
+                var template = new {
+                    image = Array.Empty<string>(),
+                    serverscopeBlacklist = Array.Empty<string>()
+                };
+                var jayson = ReadConfigFile("file_types", ref bytes, template);
+
+                ImageTypes = jayson.image;
+                ServerscopeBlacklist = jayson.serverscopeBlacklist;
+            }
+            {
+                var template = new {
+                    no_auto_deутпдшырify = Array.Empty<ulong>()
+                };
+                
+                var userJayson = ReadConfigFile("config/user", ref bytes, template);
+                var channelJayson = ReadConfigFile("config/channel", ref bytes, template);
+                var serverJayson = ReadConfigFile("config/server", ref bytes, template);
+                NoAutoDeУтпдшырify = new MultimodalIdList(userJayson.no_auto_deутпдшырify, channelJayson.no_auto_deутпдшырify, serverJayson.no_auto_deутпдшырify);
+            }
+        }
+        catch (Exception ex) {
+            e = ex;
             return 0;
         }
-        Semiconductors = jayson.Semiconductors;
-        DJson = File.ReadAllText(Path.Join(datadir, "random_lines.json"));
-        bytes += new FileInfo(Path.Join(datadir, "random_lines.json")).Length;
-        var templateToo = new {
-            errormsgs = Array.Empty<string>(),
-            pingmsgs = Array.Empty<string>(),
-            isthistrue = Array.Empty<string>(),
-            completelyrandomresponses = Array.Empty<string>(),
-            memes = Array.Empty<string>()
-        };
-        var jaysonToo = JsonConvert.DeserializeAnonymousType(DJson, templateToo);
-        if (jaysonToo is null) {
-            e = new Exception("Couldn't deserialize random_lines.json");
-            return 0;
-        }
-        ErrorMsgs = jaysonToo.errormsgs;
-        PingMsgs = jaysonToo.pingmsgs;
-        IsThisTrue = jaysonToo.isthistrue;
-        CompletelyRandomResponses = jaysonToo.completelyrandomresponses;
-        Memes = jaysonToo.memes;
-        e = null;
         return bytes;
     }
 
@@ -475,4 +526,23 @@ internal static partial class Data {
     private static partial Regex IllegalRussianRegex();
     [GeneratedRegex(@"\*\*icosahedron\*\* just got \*\*[0-9]+\*\* kreisicoins")]
     private static partial Regex KreisicoinRegex();
+}
+
+internal class MultimodalIdList {
+    public MultimodalIdList() {}
+
+    public MultimodalIdList(ulong[] users, ulong[] channels, ulong[] guilds) {
+        Users = users.ToList();
+        Channels = channels.ToList();
+        Guilds = guilds.ToList();
+    }
+    public List<ulong> Users { get; } = [];
+    public List<ulong> Channels { get; } = [];
+    public List<ulong> Guilds { get; } = [];
+
+    public bool isMatch(IMessage msg) {
+        if (Users.Contains(msg.Author.Id)) return true;
+        if (Channels.Contains(msg.Channel.Id)) return true;
+        return msg.Channel is not IGuildChannel channel || Guilds.Contains(channel.Guild.Id);
+    }
 }
