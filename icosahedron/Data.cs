@@ -38,9 +38,6 @@ internal static partial class Data {
     public static string[] Memes = [];
     public static string[] ImageTypes = [];
 
-    public static string[] PTSD = [
-        "g bad",
-        "h good"
     public static string[] ServerscopeBlacklist = [];
 
     public static string[] PTSD = [];
@@ -213,8 +210,11 @@ internal static partial class Data {
         catch (Exception ee) {
             EmbedBuilder embed = new EmbedBuilder {
                 Color = 0xAF2D2A,
-                Title = "The error embed generator had an error <:normal:1275453792002773146>",
-                Description = e.Message
+                Title = $"The error embed generator had an {ee.GetType().Name} <:normal:1275453792002773146>",
+                Description = e.Message,
+                Footer = new EmbedFooterBuilder {
+                    Text = $"Original error: {e.GetType().Name}"
+                }
             };
             
             if (ee.StackTrace != null) {
