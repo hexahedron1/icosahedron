@@ -116,8 +116,24 @@ internal static partial class Data {
     public static (ulong, ulong, DiscordWebhookClient)? ServerScopeState = null;
 
     public static HttpClient HttpClient = new();
-    // source, target
-    private static Dictionary<ulong, ulong> MessageCache = new();
+    public static async Task<IMessage?> FetchCounterpart(ulong msgid, ulong channelid) {
+        if (!ServerScopeState.HasValue) return null;
+        if (ServerScopeState.Value.Item1 == channelid) {
+            ulong? other = MessageCache.FirstOrDefault(x => x.Value == msgid).Key;
+            if (other is null or 0) return null;
+            var och = (IMessageChannel)(await client.GetChannelAsync(ServerScopeState.Value.Item2))!;
+            return await och.GetMessageAsync(other.Value);
+        }
+        if (ServerScopeState.Value.Item2 != channelid) return null;
+        {
+            ulong? other = MessageCache.FirstOrDefault(x => x.Key == msgid).Value;
+            if (other is null or 0) return null;
+            var och = (IMessageChannel)(await client.GetChannelAsync(ServerScopeState.Value.Item1))!;
+            Console.WriteLine(other.Value);
+            return await och.GetMessageAsync(other.Value);
+        }
+    }
+
     public static async Task<IWebhook?> TryGetWebhook(this ITextChannel channel, string defaultName = "scug") {
         try {
             var hooks = await channel.GetWebhooksAsync();
@@ -130,6 +146,8 @@ internal static partial class Data {
             return null;
         }
     }
+    // target, source
+    public static Dictionary<ulong, ulong> MessageCache = new();
     public static async Task CopyMessage(IMessage message, DiscordWebhookClient webhook) {
         if (string.IsNullOrEmpty(message.Content) && message.Embeds.Count == 0 && message.Attachments.Count == 0) return;
         ulong newmsg;
@@ -137,41 +155,45 @@ internal static partial class Data {
             $"-# - **{(await message.Channel.GetMessageAsync(message.Reference.MessageId.Value)).Author.Username}**: {(await message.Channel.GetMessageAsync(message.Reference.MessageId.Value)).CleanContent.Ellipsis(50)}\n{message.Content}".Ellipsis(2000)
             : message.Content;
         if (message.Attachments.Count == 0) {
-            newmsg = await webhook.SendMessageAsync(content, false, from x in message.Embeds select (Embed)x,
+            newmsg = await webhook.SendMessageAsync(content, false, from x in message.Embeds where x.Type == EmbedType.Rich select (Embed)x,
                 message.Author.Username, message.Author.GetAvatarUrl());
         }
         else {
             List<IMessageComponentBuilder> comps = [];
             if (message.CleanContent.Length > 0) comps.Add(new TextDisplayBuilder(content));
             var sanitized = (from x in message.Attachments
-                where x.ContentType.Split('/')[0] is "image" or "video"
+                where x.ContentType.Split('/')[0] is "image" or "video" && !ServerscopeBlacklist.Contains(x.ContentType)
                 select new MediaGalleryItemProperties(new UnfurledMediaItemProperties(x.Url))).ToArray();
             if (sanitized.Length > 0) comps.Add(new MediaGalleryBuilder(sanitized));
             if (comps.Count == 0) return;
             ComponentBuilderV2 builder = new(comps);
             newmsg = await webhook.SendMessageAsync(components: builder.Build(), username: message.Author.Username, avatarUrl: message.Author.GetAvatarUrl());
         }
+        Console.WriteLine($"{message.Id} <-> {newmsg}");
         MessageCache.Add(newmsg, message.Id);
     }
     public static async Task CopyMessage(IMessage message, IMessageChannel channel) {
         if (string.IsNullOrEmpty(message.Content) && message.Embeds.Count == 0 && message.Attachments.Count == 0) return;
-        MessageReference? refer = message.Reference is not null && message.Reference.MessageId.IsSpecified ? 
+        ulong newmsg;
+        var refer = message.Reference is not null && message.Reference.MessageId.IsSpecified ? 
             MessageCache.TryGetValue(message.Reference.MessageId.Value, out var id) ? new MessageReference(id, channel.Id) : null
             : null;
         if (message.Attachments.Count == 0) {
-            await channel.SendMessageAsync(message.Content, false, embeds: (from x in message.Embeds select (Embed)x).ToArray(), messageReference: refer);
+            newmsg = (await channel.SendMessageAsync(message.Content, embeds: (from x in message.Embeds where x.Type == EmbedType.Rich select (Embed)x).ToArray(), messageReference: refer)).Id;
         }
         else {
             List<IMessageComponentBuilder> comps = [];
             if (message.CleanContent.Length > 0) comps.Add(new TextDisplayBuilder(message.CleanContent));
             var sanitized = (from x in message.Attachments
-                where x.ContentType.Split('/')[0] is "image" or "video"
+                where x.ContentType?.Split('/')[0] is "image" or "video" && !ServerscopeBlacklist.Contains(x.ContentType)
                 select new MediaGalleryItemProperties(new UnfurledMediaItemProperties(x.Url))).ToArray();
             if (sanitized.Length > 0) comps.Add(new MediaGalleryBuilder(sanitized));
             if (comps.Count == 0) return;
             ComponentBuilderV2 builder = new(comps);
-            await channel.SendMessageAsync(components: builder.Build(), messageReference: refer);
+            newmsg = (await channel.SendMessageAsync(components: builder.Build(), messageReference: refer)).Id;
         }
+        Console.WriteLine($"{newmsg} <-> {message.Id}");
+        MessageCache.Add(message.Id, newmsg);
     }
     
     public static void MakePageEmbed(string title, string id, IEnumerable<string> list, int page, out Embed embed,
@@ -526,6 +548,10 @@ internal static partial class Data {
     private static partial Regex IllegalRussianRegex();
     [GeneratedRegex(@"\*\*icosahedron\*\* just got \*\*[0-9]+\*\* kreisicoins")]
     private static partial Regex KreisicoinRegex();
+
+    public static class Polyhedra {
+        
+    }
 }
 
 internal class MultimodalIdList {

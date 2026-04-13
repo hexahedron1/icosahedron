@@ -37,19 +37,49 @@ namespace Icosahedron {
             client.MessageReceived += MessageReceived;
             client.ButtonExecuted += SlashCommandExecuted;
             client.AutocompleteExecuted += SlashCommandExecuted;
+            client.UserIsTyping += UserIsTyping;
+            client.ReactionAdded += ReactionAdded;
             interactionService.Log += Log;
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
             await Task.Delay(-1);
         }
+        
+        
+
+        private async Task<Task> ReactionAdded(Cacheable<IUserMessage, ulong> msg, Cacheable<IMessageChannel, ulong> channel, SocketReaction react) {
+            return Task.CompletedTask;
+            try {
+                if (!ServerScopeState.HasValue) return Task.CompletedTask;
+                var msgid = (await msg.GetOrDownloadAsync()).Id;
+                var channelid = (await channel.GetOrDownloadAsync()).Id;
+                var other = await FetchCounterpart(msgid, channelid);
+                if (other is null) return Task.CompletedTask;
+                await other.AddReactionAsync(react.Emote);
+            } catch (Exception e) {
+                await ShowError(await msg.GetOrDownloadAsync(), e);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private async Task<Task> UserIsTyping(Cacheable<IUser, ulong> user, Cacheable<IMessageChannel, ulong> channel) {
+            if (ServerScopeState.HasValue && channel.Id == ServerScopeState.Value.Item1) {
+                await Log("ServerScope", "Taipinge");
+                if (await client.GetChannelAsync(ServerScopeState.Value.Item2) is not IMessageChannel tgt) return Task.CompletedTask;
+                await tgt.TriggerTypingAsync();
+            }
+            return Task.CompletedTask;
+        }
 
         private Queue<IMessageChannel> whopinged = [];
         private const string prefix = "hey icosahedron";
 
-        private async Task<Task> MessageReceived(SocketMessage msg) {
         private async Task<Task> MessageReceived(SocketMessage msgg) {
             IUserMessage msg = (IUserMessage)msgg;
             if (msg.Author.Id == client.CurrentUser.Id) return Task.CompletedTask;
+            if (ServerScopeState.HasValue && msg.Author.IsWebhook && msg.Channel.Id == ServerScopeState.Value.Item1)
+                return Task.CompletedTask;
             try {
                 if (ServerScopeState.HasValue && !msg.Author.IsWebhook) {
                     if (msg.Channel.Id == ServerScopeState.Value.Item1) {
@@ -280,8 +310,6 @@ namespace Icosahedron {
                             await Log("MessageReceived", "Downloading image");
                             DownloadImage(attack.Url);
                             using Image img = await Image.LoadAsync("/tmp/icosahedron/image");
-                            if (img.Frames.Count == 1) await msg.Reply($"{img.Width}x{img.Height} ({img.Width * img.Height} total)");
-                            else await msg.Reply($"{img.Width}x{img.Height} ({img.Width * img.Height * img.Frames.Count} total over {img.Frames.Count} frames)");
                             if (img.Frames.Count == 1) await msg.ReplyAsync($"{img.Width}x{img.Height} ({img.Width * img.Height} total)");
                             else await msg.ReplyAsync($"{img.Width}x{img.Height} ({img.Width * img.Height * img.Frames.Count} total over {img.Frames.Count} frames)");
                         }
@@ -503,7 +531,8 @@ namespace Icosahedron {
 
         private async Task<Task> Ready() {
             try {
-                LoadConfig(out _);
+                LoadConfig(out var configException);
+                if (configException is not null) throw configException;
                 await interactionService.RegisterCommandsGloballyAsync();
                 StartTime = DateTime.Now;
                 await client.SetCustomStatusAsync("Rise and shine, Mr. Freeman");
@@ -573,8 +602,6 @@ namespace Icosahedron {
                 });
             } catch (Exception e) {
                 e.ErrorEmbed(true);
-                await client.LogoutAsync();
-                Environment.Exit(1);
             }
             return Task.CompletedTask;
         }
