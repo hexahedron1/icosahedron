@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System.Collections;
+using System.Diagnostics;
+using System.Net.NetworkInformation;
 using Discord.Webhook;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -314,7 +316,15 @@ namespace Icosahedron {
                             else await msg.ReplyAsync($"{img.Width}x{img.Height} ({img.Width * img.Height * img.Frames.Count} total over {img.Frames.Count} frames)");
                         }
                     } else if (command == "saskjlkjksljad") await msg.ReplyAsync(CompletelyRandomResponses.Random());
-                    
+                    else if (WhatIsRegex.IsMatch(command)) {
+                        var thing = WhatIsRegex.Match(command).Groups[1].Value;
+                        string? polyKey = Polyhedra.NameCache.Keys.FirstOrDefault(x => x.ToLower() == thing);
+                        if (polyKey != null) {
+                            await msg.ReplyAsync(embed: Polyhedra.CreatePolyhedronEmbed(polyKey, out var component), components: component);
+                        } else {
+                            await msg.ReplyAsync($"idk what {thing} is");
+                        }
+                    }
                 }
                 else if (msgContent.ToLower().StartsWith("sudo ")) {
                     if (!Semiconductors.Contains(msg.Author.Id)) {
@@ -606,14 +616,6 @@ namespace Icosahedron {
             return Task.CompletedTask;
         }
 
-        private Task Log(string source, string message, LogSeverity severity = LogSeverity.Info,
-            Exception? exception = null) {
-            return Log(new LogMessage(severity, source, message, exception));
-        }
-
-        private Task Log(LogMessage msg) {
-            Console.WriteLine(msg);
-            return Task.CompletedTask;
-        }
+        
     }
 }

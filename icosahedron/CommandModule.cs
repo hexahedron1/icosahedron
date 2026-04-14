@@ -10,6 +10,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.Serialization.Json;
 using Discord.Webhook;
+using Newtonsoft.Json.Linq;
 
 namespace Icosahedron;
 
@@ -788,5 +789,162 @@ internal class CommandModule : InteractionModuleBase {
             }
             SaveConfig();
         }
+    }
+    
+    [Group("prism", "polyhedron database explorer")]
+    internal class PrismGroupModule : InteractionModuleBase {
+        [SlashCommand("info", "info about the database")]
+        public async Task Info() {
+            EmbedBuilder embed = new() {
+                Title = "Prism",
+                Description = "Info database for polyhedra, polygons and tilings",
+                Fields = [
+                    new EmbedFieldBuilder {
+                        IsInline = true, Name = "Credits",
+                        Value = """
+                                Images of polyhedra and vertex figures taken from [Wikipedia](https://en.wikipedia.org/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) or public domain
+                                OBJ files taken from [polyhedra.tessera.li](https://polyhedra.tessera.li/) under the MIT License
+                                """
+                    }
+                ],
+                Color = EmbedColor,
+                Footer = new EmbedFooterBuilder {
+                    Text = $"{Polyhedra.UniqueKeys.Count} polyhedra, {Polyhedra.Groups.Count} groups"
+                }
+            };
+            await RespondAsync(embed: embed.Build());
+        }
+        public static async Task GroupAutocomplete(IInteractionContext Context) {
+            var userInput = (Context.Interaction as SocketAutocompleteInteraction)!.Data.Current.Value.ToString();
+            var results = (from x in Polyhedra.Groups
+                where string.IsNullOrWhiteSpace(userInput) || x.Key.Contains(userInput, StringComparison.InvariantCultureIgnoreCase)
+                select new AutocompleteResult(x.Key, x.Value)).ToList();
+            await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync(results.Take(25));
+        }
+        
+        public static async Task PolyhedronAutocomplete(IInteractionContext Context) {
+            var userInput = (Context.Interaction as SocketAutocompleteInteraction)!.Data.Current.Value.ToString();
+            var results = (from x in Polyhedra.UniqueKeys 
+                where string.IsNullOrWhiteSpace(userInput) || x.Contains(userInput, StringComparison.InvariantCultureIgnoreCase)
+                select new AutocompleteResult(x, x)).ToList();
+            await (Context.Interaction as SocketAutocompleteInteraction)!.RespondAsync(results.Take(25));
+        }
+
+        [Group("group", "subcommands for groups")]
+        internal class PrismGroupGroupModule : InteractionModuleBase {
+            [SlashCommand("list", "list all available polyhedron groups")]
+            public async Task List() {
+                try {
+                    await DeferAsync();
+                    MakePageEmbed("Polyhedron groups", "prism-group-list",
+                        Polyhedra.Groups,
+                        x => x.Key, 0, out var embed, out var components);
+                    await FollowupAsync(embed: embed, components: components);
+                }
+                catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+            [ComponentInteraction("prism-group-list-*", true)]
+            public async Task ListButton(int id) {
+                try {
+                    await DeferAsync();
+                    MakePageEmbed("Polyhedron groups", "prism-group-list",
+                        Polyhedra.Groups,
+                        x => x.Key, id, out var embed, out var components);
+                    await ModifyOriginalResponseAsync(x => {
+                        x.Embed = embed;
+                        x.Components = components;
+                    });
+                }
+                catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+            [AutocompleteCommand("group", "info")]
+            public async Task InfoAutocomplete() => await GroupAutocomplete(Context);
+            [SlashCommand("info", "show info about a group")]
+            public async Task Info([Summary("group"), Autocomplete] string groupPath) {
+                try {
+                    string json = await File.ReadAllTextAsync(Path.Join(groupPath, ".group.json"));
+                    var template = new {
+                        name = "",
+                        description = "",
+                        thumbnail = "",
+                        sections = new JObject(),
+                        trivia = Array.Empty<string>()
+                    };
+                    var groupData = JsonConvert.DeserializeAnonymousType(json, template);
+                    if (groupData is null) throw new JsonSerializationException("Failed to parse group data");
+                    EmbedBuilder embed = new EmbedBuilder {
+                        Title = groupData.name,
+                        Description = groupData.description,
+                        ThumbnailUrl = groupData.thumbnail,
+                        Footer = new EmbedFooterBuilder {
+                            Text = groupData.trivia.Random()
+                        },
+                        Color = EmbedColor
+                    };
+                    foreach (var pair in groupData.sections) {
+                        if (pair.Value is null) continue;
+                        embed.AddField(pair.Key, pair.Value.ToString(), true);
+                    }
+                    await RespondAsync(embed: embed.Build());
+                } catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+            [AutocompleteCommand("group", "items")]
+            public async Task ListAutocomplete() => await GroupAutocomplete(Context);
+
+            [SlashCommand("items", "list all items in a group")]
+            public async Task ListItems([Summary("group"), Autocomplete] string groupPath) {
+                try {
+                    string groupConfigFile = Path.Join(groupPath, ".group.json");
+                    string groupConfigJson = await File.ReadAllTextAsync(groupConfigFile);
+                    var template = new {
+                        name = ""
+                    };
+                    var groupConfig = JsonConvert.DeserializeAnonymousType(groupConfigJson, template);
+                    if (groupConfig == null) {
+                        await Log("prism group items", $"Failed to parse {groupPath}", LogSeverity.Warning);
+                        throw new JsonException($"Failed to parse {groupConfigFile}");
+                    }
+                    await DeferAsync();
+                    MakePageEmbed(groupConfig.name, "prism-group-poly-list",
+                        Polyhedra.GroupCache[groupConfig.name], 0, out var embed, out var components);
+                    await FollowupAsync(embed: embed, components: components);
+                }
+                catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+            [ComponentInteraction("prism-group-poly-list-*", true)]
+            public async Task ListItemsButton(int id) {
+                try {
+                    await DeferAsync();
+                    string gid = (await Context.Interaction.GetOriginalResponseAsync()).Embeds.First().Title;
+                    MakePageEmbed(gid, "prism-group-poly-list",
+                        Polyhedra.GroupCache[gid],  id, out var embed, out var components);
+                    await ModifyOriginalResponseAsync(x => {
+                        x.Embed = embed;
+                        x.Components = components;
+                    });
+                }
+                catch (Exception e) {
+                    await ShowError(Context.Interaction, e);
+                }
+            }
+        }
+
+        [ComponentInteraction("prism-select-menu", true)]
+
+        public async Task PrismSelectMenu(string[] selections) => await RespondAsync(
+            embed: Polyhedra.CreatePolyhedronEmbed(selections.First(), out var component), components: component);
+        [AutocompleteCommand("polyhedron", "view")]
+        public async Task ViewAutocomplete() => await PolyhedronAutocomplete(Context);
+        [SlashCommand("view", "view the data of a polyhedron")]
+        public async Task View([Summary("polyhedron"), Autocomplete] string poly) =>
+            await RespondAsync(embed: Polyhedra.CreatePolyhedronEmbed(poly, out var component), components: component);
     }
 }

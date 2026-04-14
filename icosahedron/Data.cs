@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Discord.Net;
 using Discord.Webhook;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Icosahedron;
 
@@ -52,6 +53,8 @@ internal static partial class Data {
         "config/user.json"
     ];
 
+    public static Regex WhatIsRegex;
+    
     public static MultimodalIdList NoAutoDeУтпдшырify = new();
     public static T Random<T>(this IEnumerable<T> list) {
         var enumerable = list as T[] ?? list.ToArray();
@@ -278,6 +281,7 @@ internal static partial class Data {
         File.WriteAllText(Path.Join(datadir, "config/server.json"), JsonConvert.SerializeObject(guildConfig, Formatting.Indented));
     }
     public static long LoadConfig(out Exception? e) {
+        Log("Data", "Loading config files");
         long bytes = 0;
         try {
             e = null;
@@ -335,11 +339,21 @@ internal static partial class Data {
                 var serverJayson = ReadConfigFile("config/server", ref bytes, template);
                 NoAutoDeУтпдшырify = new MultimodalIdList(userJayson.no_auto_deутпдшырify, channelJayson.no_auto_deутпдшырify, serverJayson.no_auto_deутпдшырify);
             }
+            {
+                var template = new {
+                    whatis = ""
+                };
+                var jayson = ReadConfigFile("regex", ref bytes, template);
+                WhatIsRegex = new Regex(jayson.whatis, RegexOptions.IgnoreCase);
+                
+            }
+            bytes += Polyhedra.LoadCache();
         }
         catch (Exception ex) {
             e = ex;
             return 0;
         }
+        Log("Data", $"Successfully loaded {bytes} bytes of config files");
         return bytes;
     }
 
@@ -548,9 +562,144 @@ internal static partial class Data {
     private static partial Regex IllegalRussianRegex();
     [GeneratedRegex(@"\*\*icosahedron\*\* just got \*\*[0-9]+\*\* kreisicoins")]
     private static partial Regex KreisicoinRegex();
-
+    public static Task Log(string source, string message, LogSeverity severity = LogSeverity.Info,
+        Exception? exception = null) {
+        return Log(new LogMessage(severity, source, message, exception));
+    }
+    public static Task Log(LogMessage msg) {
+        Console.ForegroundColor = msg.Severity switch {
+            LogSeverity.Debug => ConsoleColor.Cyan,
+            LogSeverity.Warning => ConsoleColor.Yellow,
+            LogSeverity.Error => ConsoleColor.Red,
+            LogSeverity.Critical => ConsoleColor.Magenta,
+            LogSeverity.Verbose => ConsoleColor.Blue,
+            _ => ConsoleColor.White
+        };
+        Console.WriteLine(msg);
+        Console.ResetColor();
+        return Task.CompletedTask;
+    }
     public static class Polyhedra {
-        
+        public static long LoadCache() {
+            Log("Data", "Loading polyhedron cache");
+            string rootdir = Path.Join(datadir, "polyhedra");
+            long bytes = 0;
+            // REMEMBER TO CLEAR ALL COLLECTIONS BEFORE RELOADING IF YOU ADD MORE
+            Groups.Clear();
+            NameCache.Clear();
+            GroupCache.Clear();
+            UniqueKeys.Clear();
+            foreach (var group in Directory.GetDirectories(rootdir)) {
+                string groupConfigFile = Path.Combine(group, ".group.json");
+                if (group.Split('/').Last().StartsWith('.')) continue;
+                if (!File.Exists(groupConfigFile)) {
+                    Log("Data", $"Group {group} does not have a configuration file", LogSeverity.Warning);
+                    continue;
+                }
+                bytes += new FileInfo(groupConfigFile).Length;
+                string groupConfigJson =  File.ReadAllText(groupConfigFile);
+                var template = new {
+                    name = ""
+                };
+                var groupConfig = JsonConvert.DeserializeAnonymousType(groupConfigJson, template);
+                if (groupConfig == null) {
+                    Log("Data", $"Failed to parse {groupConfigFile}", LogSeverity.Warning);
+                    continue;
+                }
+                Groups.Add(groupConfig.name, group);
+                string[] polyhedra = (from x in Directory.GetFiles(@group)
+                    where !x.Split('/').Last().StartsWith('.') && x.EndsWith(".json") select x).ToArray();
+                List<string> groupCache = [];
+                foreach (var poly in polyhedra) {
+                    string pjson = File.ReadAllText(poly);
+                    bytes += new FileInfo(poly).Length;
+                    var polyTemplate = new {
+                        name = "",
+                        otherNames = Array.Empty<string>()
+                    };
+                    var polyData = JsonConvert.DeserializeAnonymousType(pjson, polyTemplate);
+                    if (polyData == null) {
+                        Log("Data", $"Failed to parse {poly}", LogSeverity.Warning);
+                        continue;
+                    }
+                    groupCache.Add(polyData.name);
+                    NameCache.Add(polyData.name, poly);
+                    UniqueKeys.Add(polyData.name);
+                    foreach (var name in polyData.otherNames) {
+                        NameCache.Add(name, poly);
+                    }
+                }
+                GroupCache.Add(groupConfig.name, groupCache.ToArray());
+            }
+            return bytes;
+        }
+
+        public static Dictionary<string, string> NameCache = new();
+        public static Dictionary<string, string> Groups = new();
+        public static Dictionary<string, string[]> GroupCache = new();
+        public static List<string> UniqueKeys = [];
+
+        public static Embed CreatePolyhedronEmbed(string key, out MessageComponent components) {
+            string file = NameCache[key];
+            string json = File.ReadAllText(file);
+            JObject? jobJect = null;
+            var template = new {
+                name = "",
+                description = "",
+                sections = new JObject(),
+                image = "",
+                vfig = "",
+                trivia = Array.Empty<string>(),
+                link = "",
+                otherNames = Array.Empty<string>(),
+                operations = jobJect
+            };
+            var data = JsonConvert.DeserializeAnonymousType(json, template); 
+            if (data == null) {
+                Log("CreatePolyhedronEmbed", $"Failed to parse {file}", LogSeverity.Warning);
+                throw new JsonException($"Failed to parse {file}");
+            }
+            EmbedBuilder embed = new EmbedBuilder {
+                Title = data.name,
+                Description = data.description,
+                Url = data.link,
+                ThumbnailUrl = data.vfig,
+                ImageUrl = data.image,
+                Footer = new EmbedFooterBuilder {
+                    Text = data.trivia.Random()
+                },
+                Fields = [
+                    new EmbedFieldBuilder {
+                        IsInline = true,
+                        Name = "Also known as",
+                        Value = string.Join('\n', data.otherNames)
+                    }
+                ],
+                Color = EmbedColor
+            };
+            foreach (var pair in data.sections) {
+                if (pair.Value is null) continue;
+                embed.AddField(pair.Key, pair.Value.ToString(), true);
+            }
+
+            List<IMessageComponentBuilder> componentBuilders = [];
+            if (data.operations is { HasValues: true }) {
+                SelectMenuBuilder menu = new("prism-select-menu");
+                foreach (var pair in data.operations) {
+                    if (pair.Value is null) continue;
+                    menu.AddOption(pair.Key, pair.Value.ToString());
+                }
+                componentBuilders.Add(menu);
+            }
+            components = new ComponentBuilder() {
+                ActionRows = [
+                    new ActionRowBuilder {
+                        Components = componentBuilders
+                    }
+                ]
+            }.Build();
+            return embed.Build();
+        }
     }
 }
 
