@@ -74,7 +74,6 @@ namespace Icosahedron {
             return Task.CompletedTask;
         }
 
-        private Queue<IMessageChannel> whopinged = [];
         private const string prefix = "hey icosahedron";
 
         private async Task<Task> MessageReceived(SocketMessage msgg) {
@@ -404,13 +403,9 @@ namespace Icosahedron {
                 else if (msg.MentionedEveryone) await msg.ReplyAsync("big mistake");
                 else if ((msg.Channel is IGuildChannel ch &&
                           msg.IsMentioned(await ch.Guild.GetUserAsync(client.CurrentUser.Id)) && !msg.Author.IsBot) ||
-                         msg.Channel is IDMChannel) {
-                    if (asleep && !(ServerScopeState.HasValue && ServerScopeState.Value.Item2 != msg.Channel.Id)) {
-                        if (!whopinged.Contains(msg.Channel)) whopinged.Enqueue(msg.Channel);
-                        await Log("Ping", "Asleep");
-                    }
-                    else if (Rand.Next(10) == 0) await msg.ReplyAsync(String.Format(PingMsgs.RandomerRandom(), msg.Author.Id));
-                } else if (isУтпдшыр.HasValue && isУтпдшыр.Value) {
+                         msg.Channel is IDMChannel && !asleep &&Rand.Next(10) == 0) 
+                    await msg.ReplyAsync(String.Format(PingMsgs.RandomerRandom(), msg.Author.Id));
+                else if (isУтпдшыр.HasValue && isУтпдшыр.Value) {
                     ITextChannel txtChannel = (ITextChannel)msg.Channel;
                     var hook = await txtChannel.TryGetWebhook();
                     if (NoAutoDeУтпдшырify.isMatch(msg) || hook is null) await msg.ReplyAsync($"-# Automatic translation from утпдшыр\n{msgContent}", allowedMentions:  AllowedMentions.None);
@@ -555,15 +550,11 @@ namespace Icosahedron {
 #endif
                     ;
                 budilnik.Elapsed += async (_, _) => {
-                    bool unstash = Rand.Next(2) == 0;
                     if (Rand.Next(2) == 0) {
                         asleep = !asleep;
                         await client.SetStatusAsync(asleep ? UserStatus.AFK : UserStatus.Online);
-                        if (!asleep) unstash = true;
-                        else {
-                            await Log("Status", "Asleep");
-                            await client.SetCustomStatusAsync("");
-                        }
+                        await Log("Status", "Asleep");
+                        await client.SetCustomStatusAsync("");
                     }
 
                     if (!asleep && Rand.Next(2) == 0) {
@@ -578,12 +569,6 @@ namespace Icosahedron {
 #endif
                         )).SendMessageAsync(text);
                         await Log("Status", type.ToString().PadRight(24) + text);
-                    }
-
-                    if (unstash && whopinged.Count > 0) {
-                        IMessageChannel ch = whopinged.Dequeue();
-                        await ch.SendMessageAsync("who pinged");
-                        await Log("Ping", "Unsatshed ping");
                     }
                 };
                 budilnik.Start();
